@@ -1,0 +1,124 @@
+import { useState, useEffect } from 'react';
+
+const API_URL = 'http://localhost:3001/api';
+
+function StatsDisplay({ refreshTrigger }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${API_URL}/stats`);
+      const data = await response.json();
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [refreshTrigger]);
+
+  if (loading) {
+    return (
+      <div className="stats-display loading">
+        <h3>📊 IT Hero Stats</h3>
+        <p className="loading-text">Calculating heroism levels...</p>
+      </div>
+    );
+  }
+
+  if (!stats || stats.total_ratings === 0) {
+    return (
+      <div className="stats-display empty">
+        <h3>📊 IT Hero Stats</h3>
+        <p>No stats yet. Submit a rating to begin the legend!</p>
+      </div>
+    );
+  }
+
+  const renderStarBar = (stars, count, total) => {
+    const percentage = total > 0 ? (count / total) * 100 : 0;
+    return (
+      <div className="star-bar" key={stars}>
+        <span className="star-label">{stars}★</span>
+        <div className="bar-container">
+          <div className="bar-fill" style={{ width: `${percentage}%` }}></div>
+        </div>
+        <span className="bar-count">{count}</span>
+      </div>
+    );
+  };
+
+  // Create star distribution array (ensure all 5 stars are represented)
+  const starDist = [1, 2, 3, 4, 5].map(star => {
+    const found = stats.star_distribution.find(s => s.stars === star);
+    return { stars: star, count: found ? found.count : 0 };
+  });
+
+  return (
+    <div className="stats-display">
+      <h3>📊 IT Hero Stats</h3>
+
+      <div className="hero-title-section">
+        <span className="hero-title">{stats.hero_title}</span>
+        <div className="avg-rating">
+          <span className="avg-number">{stats.average_stars.toFixed(1)}</span>
+          <span className="avg-stars">★</span>
+          <span className="avg-label">average</span>
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span className="stat-number">{stats.total_ratings}</span>
+          <span className="stat-label">Total Ratings</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-number">{stats.ratings_this_week}</span>
+          <span className="stat-label">This Week</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-number">{stats.fun_facts.printers_tamed}</span>
+          <span className="stat-label">🖨️ Printers Tamed</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-number">{stats.fun_facts.crises_averted}</span>
+          <span className="stat-label">🔥 Crises Averted</span>
+        </div>
+      </div>
+
+      <div className="distribution-section">
+        <h4>Rating Distribution</h4>
+        <div className="star-distribution">
+          {starDist.reverse().map(({ stars, count }) =>
+            renderStarBar(stars, count, stats.total_ratings)
+          )}
+        </div>
+      </div>
+
+      {stats.category_breakdown.length > 0 && (
+        <div className="category-stats">
+          <h4>Top Quest Types</h4>
+          <div className="category-list">
+            {stats.category_breakdown.slice(0, 5).map((cat) => (
+              <div className="category-stat" key={cat.category}>
+                <span className="cat-emoji">{cat.category_emoji}</span>
+                <span className="cat-name">{cat.category_name}</span>
+                <span className="cat-count">{cat.count} quests</span>
+                <span className="cat-avg">{cat.avg_stars}★</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default StatsDisplay;
