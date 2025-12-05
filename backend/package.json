@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "setup:tunnel": "./scripts/setup-tunnel.sh",
+    "production": "./scripts/start-production.sh"
   },
   "dependencies": {
     "better-sqlite3": "^11.6.0",

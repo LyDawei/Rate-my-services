@@ -24,8 +24,54 @@ const MAX_NAME_LENGTH = 100;
 app.use(helmet());
 
 // CORS - Restrict to specific origin(s)
+// Supports multiple origins via comma-separated FRONTEND_URL
+const allowedOrigins = FRONTEND_URL.split(',').map(url => url.trim());
+
+/**
+ * Validates if an origin is allowed based on the configured patterns
+ * @param {string} origin - The origin to validate
+ * @param {string} allowed - The allowed pattern (exact URL or *.domain.com)
+ * @returns {boolean}
+ */
+function isOriginAllowed(origin, allowed) {
+  // Exact match
+  if (allowed === origin) return true;
+
+  // Wildcard subdomain match (e.g., *.vercel.app)
+  if (allowed.startsWith('*.')) {
+    try {
+      const url = new URL(origin);
+      const wildcardDomain = allowed.slice(2); // Remove "*."
+
+      // Must be HTTPS in production for wildcard domains
+      if (url.protocol !== 'https:') return false;
+
+      // Must match the exact domain or be a proper subdomain
+      // e.g., *.vercel.app matches app.vercel.app, my-app.vercel.app
+      // but NOT evilvercel.app or evil.com.vercel.app
+      return url.hostname === wildcardDomain ||
+        (url.hostname.endsWith('.' + wildcardDomain) &&
+         !url.hostname.slice(0, -(wildcardDomain.length + 1)).includes('.'));
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: function (origin, callback) {
+    // Requests without origin (same-origin, curl, etc.)
+    // In production, you may want to restrict this further
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.some(allowed => isOriginAllowed(origin, allowed))) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS policy: Origin not allowed'));
+    }
+  },
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
@@ -359,7 +405,7 @@ app.listen(PORT, () => {
 
      Baymax IT Care - Backend
      Running on port ${PORT}
-     CORS origin: ${FRONTEND_URL}
+     CORS origins: ${allowedOrigins.join(', ')}
 
      "Hello. I am Baymax, your personal
       IT healthcare companion."
