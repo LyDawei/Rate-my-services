@@ -645,3 +645,37 @@ input::placeholder {
 ::-webkit-scrollbar-thumb:hover {
   background: #ccc;
 }
+
+/* ============ Additional UI Elements ============ */
+
+.total-count {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.load-more-btn,
+.retry-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  background: var(--baymax-light);
+  border: 2px solid var(--baymax-red);
+  border-radius: 20px;
+  color: var(--baymax-red);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.load-more-btn:hover:not(:disabled),
+.retry-btn:hover {
+  background: var(--baymax-red);
+  color: white;
+}
+
+.load-more-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

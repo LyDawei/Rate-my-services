@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const API_URL = 'http://localhost:3001/api';
+import { API_URL } from '../config';
 
 function StatsDisplay({ refreshTrigger }) {
   const [stats, setStats] = useState(null);
@@ -47,7 +46,7 @@ function StatsDisplay({ refreshTrigger }) {
     return (
       <div className="star-bar" key={stars}>
         <span className="star-label">{stars}★</span>
-        <div className="bar-container">
+        <div className="bar-container" role="progressbar" aria-valuenow={percentage} aria-valuemin="0" aria-valuemax="100">
           <div className="bar-fill" style={{ width: `${percentage}%` }}></div>
         </div>
         <span className="bar-count">{count}</span>
@@ -56,6 +55,7 @@ function StatsDisplay({ refreshTrigger }) {
   };
 
   // Create star distribution array (ensure all 5 stars are represented)
+  // Use slice() to avoid mutating the original array with reverse()
   const starDist = [1, 2, 3, 4, 5].map(star => {
     const found = stats.star_distribution.find(s => s.stars === star);
     return { stars: star, count: found ? found.count : 0 };
@@ -96,7 +96,7 @@ function StatsDisplay({ refreshTrigger }) {
       <div className="distribution-section">
         <h4>Satisfaction Distribution</h4>
         <div className="star-distribution">
-          {starDist.reverse().map(({ stars, count }) =>
+          {[...starDist].reverse().map(({ stars, count }) =>
             renderStarBar(stars, count, stats.total_ratings)
           )}
         </div>

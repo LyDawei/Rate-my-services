@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import StarRating from './StarRating';
 import CategoryPicker from './CategoryPicker';
-
-const API_URL = 'http://localhost:3001/api';
+import { API_URL } from '../config';
 
 function RatingForm({ onRatingSubmitted }) {
   const [stars, setStars] = useState(0);

@@ -1,25 +1,32 @@
 /**
  * The Vault of Gratitude - SQLite Database Setup
- * Where ratings are stored for eternity (or until you delete the file)
+ * "I will store your feedback in my secure healthcare database."
  */
 
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, 'ratings.db'));
+// Use environment variable for database path, or default to local file
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'ratings.db');
+const db = new Database(dbPath);
 
-// Create the sacred ratings table
+// Create the patient feedback table
 db.exec(`
   CREATE TABLE IF NOT EXISTS ratings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     stars INTEGER NOT NULL CHECK(stars >= 1 AND stars <= 5),
     category TEXT NOT NULL,
     comment TEXT,
-    reviewer_name TEXT DEFAULT 'Anonymous Hero',
+    reviewer_name TEXT DEFAULT 'Anonymous Patient',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 
-console.log('🗄️  The Vault of Gratitude is ready!');
+// Add index for faster queries on created_at (if not exists)
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_ratings_created_at ON ratings(created_at DESC)
+`);
+
+console.log('🗄️  Patient feedback database is ready!');
 
 module.exports = db;

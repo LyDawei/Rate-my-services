@@ -1,7 +1,7 @@
 {
-  "name": "rate-my-it-backend",
+  "name": "baymax-it-care-backend",
   "version": "1.0.0",
-  "description": "The sacred backend for rating IT heroism",
+  "description": "Baymax IT Care - Your personal IT healthcare companion backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,6 +10,7 @@
   "dependencies": {
     "better-sqlite3": "^11.6.0",
     "cors": "^2.8.5",
-    "express": "^4.21.1"
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1"
   }
 }

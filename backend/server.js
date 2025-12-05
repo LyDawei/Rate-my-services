@@ -5,15 +5,57 @@
 
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const db = require('./database');
 const CATEGORIES = require('./categories');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// Middleware
-app.use(cors());
+// Validation constants
+const MAX_COMMENT_LENGTH = 500;
+const MAX_NAME_LENGTH = 100;
+
+// ============== MIDDLEWARE ==============
+
+// CORS - Restrict to specific origin(s)
+app.use(cors({
+  origin: FRONTEND_URL,
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
+
+// Parse JSON bodies
 app.use(express.json());
+
+// Rate limiting - prevent spam submissions
+const ratingsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 rating submissions per window
+  message: {
+    success: false,
+    error: "I have detected excessive feedback submissions. Please wait before submitting again."
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// General rate limiter for all routes
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: {
+    success: false,
+    error: "Too many requests. Please slow down."
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use(generalLimiter);
+
+// ============== BAYMAX RESPONSES ==============
 
 // Baymax response messages based on satisfaction level
 const BAYMAX_RESPONSES = {
@@ -69,12 +111,12 @@ app.get('/api/categories', (req, res) => {
  * POST /api/ratings
  * Submit a new care rating
  */
-app.post('/api/ratings', (req, res) => {
+app.post('/api/ratings', ratingsLimiter, (req, res) => {
   try {
-    const { stars, category, comment, reviewer_name } = req.body;
+    let { stars, category, comment, reviewer_name } = req.body;
 
     // Validate stars
-    if (!stars || stars < 1 || stars > 5) {
+    if (!stars || stars < 1 || stars > 5 || !Number.isInteger(stars)) {
       return res.status(400).json({
         success: false,
         error: "On a scale of 1 to 5, please rate your satisfaction. I cannot process values outside this range."
@@ -87,6 +129,34 @@ app.post('/api/ratings', (req, res) => {
         success: false,
         error: "Please select a valid care category. This helps me improve my diagnostics."
       });
+    }
+
+    // Server-side validation and sanitization for comment
+    if (comment) {
+      comment = String(comment).trim();
+      if (comment.length > MAX_COMMENT_LENGTH) {
+        return res.status(400).json({
+          success: false,
+          error: `Comment exceeds maximum length of ${MAX_COMMENT_LENGTH} characters.`
+        });
+      }
+      if (comment.length === 0) {
+        comment = null;
+      }
+    }
+
+    // Server-side validation and sanitization for reviewer_name
+    if (reviewer_name) {
+      reviewer_name = String(reviewer_name).trim();
+      if (reviewer_name.length > MAX_NAME_LENGTH) {
+        return res.status(400).json({
+          success: false,
+          error: `Name exceeds maximum length of ${MAX_NAME_LENGTH} characters.`
+        });
+      }
+      if (reviewer_name.length === 0) {
+        reviewer_name = null;
+      }
     }
 
     const stmt = db.prepare(`
@@ -102,15 +172,15 @@ app.post('/api/ratings', (req, res) => {
     );
 
     const newRating = db.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
-    const categoryInfo = CATEGORIES[newRating.category];
+    const categoryInfo = CATEGORIES[newRating.category] || {};
 
     res.status(201).json({
       success: true,
       message: getBaymaxResponse(stars),
       rating: {
         ...newRating,
-        category_name: categoryInfo.name,
-        category_emoji: categoryInfo.emoji
+        category_name: categoryInfo.name || newRating.category,
+        category_emoji: categoryInfo.emoji || "💊"
       }
     });
   } catch (error) {
@@ -128,8 +198,8 @@ app.post('/api/ratings', (req, res) => {
  */
 app.get('/api/ratings', (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const offset = parseInt(req.query.offset) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
 
     const ratings = db.prepare(`
       SELECT * FROM ratings
@@ -154,7 +224,8 @@ app.get('/api/ratings', (req, res) => {
       ratings: enrichedRatings,
       total,
       limit,
-      offset
+      offset,
+      hasMore: offset + ratings.length < total
     });
   } catch (error) {
     console.error('Error fetching ratings:', error);
@@ -242,14 +313,27 @@ app.get('/api/stats', (req, res) => {
 
 /**
  * GET /api/health
- * Health check endpoint
+ * Health check endpoint - also verifies database connectivity
  */
 app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    message: "Hello. I am Baymax, your personal IT healthcare companion. I am fully operational.",
-    uptime: process.uptime()
-  });
+  try {
+    // Verify database is accessible
+    db.prepare('SELECT 1').get();
+
+    res.json({
+      success: true,
+      message: "Hello. I am Baymax, your personal IT healthcare companion. I am fully operational.",
+      uptime: process.uptime(),
+      database: "connected"
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: "I am experiencing technical difficulties with my database connection.",
+      uptime: process.uptime(),
+      database: "disconnected"
+    });
+  }
 });
 
 // Start the server
@@ -259,6 +343,7 @@ app.listen(PORT, () => {
 
      Baymax IT Care - Backend
      Running on port ${PORT}
+     CORS origin: ${FRONTEND_URL}
 
      "Hello. I am Baymax, your personal
       IT healthcare companion."
