@@ -14,7 +14,7 @@ import './App.css';
 function App() {
   return (
     <div className="app">
-      {/* Background blobs - animations DISABLED for performance */}
+      {/* Background blobs - simplified & static for performance */}
       <BackgroundBlobs count={3} animate={false} />
 
       <header className="app-header glass-panel">
