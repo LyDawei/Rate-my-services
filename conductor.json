@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "setup": "cd backend && npm install; cd ../frontend && npm install",
+    "setup": "cd backend && npm install && cd ../frontend && npm install",
     "run": "cd backend && npm run dev & cd frontend && npm run dev"
   },
   "runScriptMode": "nonconcurrent"
