@@ -87,12 +87,12 @@ function StatsDisplay({ refreshTrigger }) {
           <span className="stat-label">This Week</span>
         </div>
         <div className="stat-card">
-          <span className="stat-number">{stats.fun_facts.printers_rehabilitated || 0}</span>
-          <span className="stat-label">🖨️ Printers Healed</span>
+          <span className="stat-number">{stats.fun_facts.features_built || 0}</span>
+          <span className="stat-label">🚀 Features Built</span>
         </div>
         <div className="stat-card">
-          <span className="stat-number">{stats.fun_facts.emergencies_handled || 0}</span>
-          <span className="stat-label">🚨 Emergencies</span>
+          <span className="stat-number">{stats.fun_facts.bugs_fixed || 0}</span>
+          <span className="stat-label">🐛 Bugs Fixed</span>
         </div>
       </div>
 

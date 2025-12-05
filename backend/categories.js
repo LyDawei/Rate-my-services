@@ -1,62 +1,32 @@
 /**
- * Baymax Care Categories
+ * Service Categories
  * "I cannot deactivate until you say you are satisfied with your care."
  */
 
 const CATEGORIES = {
-  emergency_response: {
-    id: "emergency_response",
-    name: "Emergency Response",
-    emoji: "🚨",
-    description: "When systems were critical and immediate care was required"
+  feature_building: {
+    id: "feature_building",
+    name: "Feature Building",
+    emoji: "🚀",
+    description: "Development of new features and functionality"
   },
-  computer_diagnostics: {
-    id: "computer_diagnostics",
-    name: "Computer Diagnostics",
-    emoji: "🔍",
-    description: "Scanning for technical ailments and prescribing solutions"
+  bug_fixing: {
+    id: "bug_fixing",
+    name: "Bug Fixing",
+    emoji: "🐛",
+    description: "Identifying and resolving software issues"
   },
-  password_recovery: {
-    id: "password_recovery",
-    name: "Password Recovery",
-    emoji: "🔑",
-    description: "Restoring access to forgotten credentials"
+  integration: {
+    id: "integration",
+    name: "Integration",
+    emoji: "🔗",
+    description: "Connecting systems, APIs, and third-party services"
   },
-  printer_rehabilitation: {
-    id: "printer_rehabilitation",
-    name: "Printer Rehabilitation",
-    emoji: "🖨️",
-    description: "Physical therapy for paper-handling devices"
-  },
-  email_treatment: {
-    id: "email_treatment",
-    name: "Email Treatment",
-    emoji: "💌",
-    description: "Treating communication disorders and inbox ailments"
-  },
-  network_recovery: {
-    id: "network_recovery",
-    name: "Network Recovery",
-    emoji: "📡",
-    description: "Restoring connectivity and treating wireless conditions"
-  },
-  device_setup: {
-    id: "device_setup",
-    name: "Device Setup",
-    emoji: "📱",
-    description: "New patient onboarding and device configuration"
-  },
-  major_procedure: {
-    id: "major_procedure",
-    name: "Major Procedure",
-    emoji: "🏥",
-    description: "Complex IT operations requiring extended care"
-  },
-  general_checkup: {
-    id: "general_checkup",
-    name: "General Checkup",
-    emoji: "💊",
-    description: "Routine maintenance and preventive care"
+  it_assistance: {
+    id: "it_assistance",
+    name: "IT Assistance",
+    emoji: "🖥️",
+    description: "General IT support and technical help"
   }
 };
 

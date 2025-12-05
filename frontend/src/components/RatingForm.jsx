@@ -8,6 +8,8 @@ function RatingForm({ onRatingSubmitted }) {
   const [category, setCategory] = useState('');
   const [comment, setComment] = useState('');
   const [reviewerName, setReviewerName] = useState('');
+  const [resolvesIssue, setResolvesIssue] = useState(null);
+  const [issueRecurrence, setIssueRecurrence] = useState(null);
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState(null);
@@ -58,7 +60,9 @@ function RatingForm({ onRatingSubmitted }) {
           stars,
           category,
           comment: comment.trim() || null,
-          reviewer_name: reviewerName.trim() || null
+          reviewer_name: reviewerName.trim() || null,
+          resolves_issue: resolvesIssue,
+          issue_recurrence: issueRecurrence
         })
       });
 
@@ -76,6 +80,8 @@ function RatingForm({ onRatingSubmitted }) {
         setCategory('');
         setComment('');
         setReviewerName('');
+        setResolvesIssue(null);
+        setIssueRecurrence(null);
         // Notify parent
         if (onRatingSubmitted) {
           onRatingSubmitted(data.rating);
@@ -153,6 +159,58 @@ function RatingForm({ onRatingSubmitted }) {
           disabled={isSubmitting}
           maxLength={100}
         />
+      </div>
+
+      <div className="form-section follow-up-section">
+        <label>Follow-up Questions (optional)</label>
+
+        <div className="follow-up-question">
+          <span className="question-text">Does this resolve your issue?</span>
+          <div className="toggle-buttons" role="group" aria-label="Does this resolve your issue?">
+            <button
+              type="button"
+              className={`toggle-btn ${resolvesIssue === true ? 'selected yes' : ''}`}
+              onClick={() => setResolvesIssue(resolvesIssue === true ? null : true)}
+              disabled={isSubmitting}
+              aria-pressed={resolvesIssue === true}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${resolvesIssue === false ? 'selected no' : ''}`}
+              onClick={() => setResolvesIssue(resolvesIssue === false ? null : false)}
+              disabled={isSubmitting}
+              aria-pressed={resolvesIssue === false}
+            >
+              No
+            </button>
+          </div>
+        </div>
+
+        <div className="follow-up-question">
+          <span className="question-text">Has this issue appeared before?</span>
+          <div className="toggle-buttons" role="group" aria-label="Has this issue appeared before?">
+            <button
+              type="button"
+              className={`toggle-btn ${issueRecurrence === true ? 'selected yes' : ''}`}
+              onClick={() => setIssueRecurrence(issueRecurrence === true ? null : true)}
+              disabled={isSubmitting}
+              aria-pressed={issueRecurrence === true}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${issueRecurrence === false ? 'selected no' : ''}`}
+              onClick={() => setIssueRecurrence(issueRecurrence === false ? null : false)}
+              disabled={isSubmitting}
+              aria-pressed={issueRecurrence === false}
+            >
+              No
+            </button>
+          </div>
+        </div>
       </div>
 
       <button
