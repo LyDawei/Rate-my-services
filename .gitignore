@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 # SQLite database
 *.db
 *.db-journal
+
+# Conductor logs
+.conductor-logs/

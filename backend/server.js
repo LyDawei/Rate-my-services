@@ -117,7 +117,7 @@ app.get('/api/categories', (req, res) => {
  */
 app.post('/api/ratings', ratingsLimiter, (req, res) => {
   try {
-    let { stars, category, comment, reviewer_name } = req.body;
+    let { stars, category, comment, reviewer_name, resolves_issue, issue_recurrence } = req.body;
 
     // Validate stars
     if (!stars || stars < 1 || stars > 5 || !Number.isInteger(stars)) {
@@ -163,16 +163,27 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
       }
     }
 
+    // Normalize and validate optional boolean fields (convert to 0/1/null for SQLite)
+    const normalizeBoolean = (value) => {
+      if (value === true || value === 'true' || value === 1) return 1;
+      if (value === false || value === 'false' || value === 0) return 0;
+      return null;
+    };
+    const resolvesIssueValue = normalizeBoolean(resolves_issue);
+    const issueRecurrenceValue = normalizeBoolean(issue_recurrence);
+
     const stmt = db.prepare(`
-      INSERT INTO ratings (stars, category, comment, reviewer_name)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO ratings (stars, category, comment, reviewer_name, resolves_issue, issue_recurrence)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
       stars,
       category,
       comment || null,
-      reviewer_name || 'Anonymous Patient'
+      reviewer_name || 'Anonymous Patient',
+      resolvesIssueValue,
+      issueRecurrenceValue
     );
 
     const newRating = db.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
@@ -302,9 +313,8 @@ app.get('/api/stats', (req, res) => {
         star_distribution: starDistribution,
         category_breakdown: enrichedCategoryStats,
         fun_facts: {
-          printers_rehabilitated: categoryStats.find(c => c.category === 'printer_rehabilitation')?.count || 0,
-          emergencies_handled: categoryStats.find(c => c.category === 'emergency_response')?.count || 0,
-          passwords_recovered: categoryStats.find(c => c.category === 'password_recovery')?.count || 0
+          features_built: categoryStats.find(c => c.category === 'feature_building')?.count || 0,
+          bugs_fixed: categoryStats.find(c => c.category === 'bug_fixing')?.count || 0
         }
       }
     });
