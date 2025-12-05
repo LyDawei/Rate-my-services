@@ -20,6 +20,11 @@ function RecentRatings({ refreshTrigger }) {
       }
 
       const response = await fetch(`${API_URL}/ratings?limit=${RATINGS_PER_PAGE}&offset=${offset}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -68,7 +73,7 @@ function RecentRatings({ refreshTrigger }) {
     return (
       <div className="recent-ratings loading">
         <h3>📋 Patient Feedback Log</h3>
-        <p className="loading-text">Scanning patient records...</p>
+        <p className="loading-text" aria-live="polite">Scanning patient records...</p>
       </div>
     );
   }

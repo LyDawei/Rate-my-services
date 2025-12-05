@@ -5,6 +5,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const db = require('./database');
 const CATEGORIES = require('./categories');
@@ -18,6 +19,9 @@ const MAX_COMMENT_LENGTH = 500;
 const MAX_NAME_LENGTH = 100;
 
 // ============== MIDDLEWARE ==============
+
+// Security headers
+app.use(helmet());
 
 // CORS - Restrict to specific origin(s)
 app.use(cors({
@@ -198,8 +202,10 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
  */
 app.get('/api/ratings', (req, res) => {
   try {
-    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
-    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const limit = Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 100);
+    const parsedOffset = parseInt(req.query.offset, 10);
+    const offset = Math.max(isNaN(parsedOffset) ? 0 : parsedOffset, 0);
 
     const ratings = db.prepare(`
       SELECT * FROM ratings

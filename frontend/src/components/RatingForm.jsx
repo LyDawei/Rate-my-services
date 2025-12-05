@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import StarRating from './StarRating';
 import CategoryPicker from './CategoryPicker';
 import { API_URL } from '../config';
@@ -12,11 +12,17 @@ function RatingForm({ onRatingSubmitted }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState(null);
   const [error, setError] = useState(null);
+  const successRef = useRef(null);
 
   // Fetch categories on mount
   useEffect(() => {
     fetch(`${API_URL}/categories`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.success) {
           setCategories(data.categories);
@@ -56,6 +62,11 @@ function RatingForm({ onRatingSubmitted }) {
         })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -69,6 +80,8 @@ function RatingForm({ onRatingSubmitted }) {
         if (onRatingSubmitted) {
           onRatingSubmitted(data.rating);
         }
+        // Move focus to success message for accessibility
+        setTimeout(() => successRef.current?.focus(), 100);
         // Clear success message after 5 seconds
         setTimeout(() => setSubmitMessage(null), 5000);
       } else {
@@ -88,7 +101,7 @@ function RatingForm({ onRatingSubmitted }) {
       <p className="form-subtitle">I cannot deactivate until you say you are satisfied with your care.</p>
 
       {submitMessage && (
-        <div className="message success">
+        <div className="message success" ref={successRef} tabIndex="-1" role="status" aria-live="polite">
           <span className="message-icon">👊</span>
           {submitMessage}
         </div>

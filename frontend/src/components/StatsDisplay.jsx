@@ -8,6 +8,9 @@ function StatsDisplay({ refreshTrigger }) {
   const fetchStats = async () => {
     try {
       const response = await fetch(`${API_URL}/stats`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       if (data.success) {
         setStats(data.stats);
@@ -27,7 +30,7 @@ function StatsDisplay({ refreshTrigger }) {
     return (
       <div className="stats-display loading">
         <h3>🏥 Care Statistics</h3>
-        <p className="loading-text">Scanning healthcare database...</p>
+        <p className="loading-text" aria-live="polite">Scanning healthcare database...</p>
       </div>
     );
   }
@@ -68,7 +71,7 @@ function StatsDisplay({ refreshTrigger }) {
       <div className="hero-title-section">
         <span className="hero-title">{stats.hero_title}</span>
         <div className="avg-rating">
-          <span className="avg-number">{stats.average_stars.toFixed(1)}</span>
+          <span className="avg-number">{(stats.average_stars || 0).toFixed(1)}</span>
           <span className="avg-stars">★</span>
           <span className="avg-label">satisfaction</span>
         </div>
