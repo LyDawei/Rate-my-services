@@ -14,6 +14,20 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
+// Trust proxy when behind reverse proxy (Cloudflare Tunnel, nginx, etc.)
+// This is required for express-rate-limit to correctly identify clients by IP
+const TRUST_PROXY = process.env.TRUST_PROXY?.toLowerCase();
+
+if (TRUST_PROXY === 'true' || TRUST_PROXY === '1') {
+  // Trust first proxy (Cloudflare Tunnel, single nginx)
+  // For multiple proxies, increase TRUST_PROXY_COUNT
+  const proxyCount = parseInt(process.env.TRUST_PROXY_COUNT, 10) || 1;
+  app.set('trust proxy', proxyCount);
+  console.log(`🔒 Trust proxy enabled (trusting ${proxyCount} proxy/proxies)`);
+} else if (process.env.NODE_ENV === 'production') {
+  console.warn('⚠️  Production mode: TRUST_PROXY not set. If behind a reverse proxy, rate limiting may not work correctly.');
+}
+
 // Validation constants
 const MAX_COMMENT_LENGTH = 500;
 const MAX_NAME_LENGTH = 100;
