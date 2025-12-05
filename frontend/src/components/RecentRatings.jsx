@@ -16,7 +16,7 @@ function RecentRatings({ refreshTrigger }) {
       }
     } catch (err) {
       console.error('Failed to fetch ratings:', err);
-      setError('Could not load the wall of fame');
+      setError('Patient records temporarily unavailable');
     } finally {
       setLoading(false);
     }
@@ -43,8 +43,8 @@ function RecentRatings({ refreshTrigger }) {
   if (loading) {
     return (
       <div className="recent-ratings loading">
-        <h3>📜 Wall of Fame</h3>
-        <p className="loading-text">Consulting the ancient scrolls...</p>
+        <h3>📋 Patient Feedback Log</h3>
+        <p className="loading-text">Scanning patient records...</p>
       </div>
     );
   }
@@ -52,7 +52,7 @@ function RecentRatings({ refreshTrigger }) {
   if (error) {
     return (
       <div className="recent-ratings error">
-        <h3>📜 Wall of Fame</h3>
+        <h3>📋 Patient Feedback Log</h3>
         <p>{error}</p>
       </div>
     );
@@ -61,9 +61,9 @@ function RecentRatings({ refreshTrigger }) {
   if (ratings.length === 0) {
     return (
       <div className="recent-ratings empty">
-        <h3>📜 Wall of Fame</h3>
+        <h3>📋 Patient Feedback Log</h3>
         <p className="empty-text">
-          No ratings yet! Be the first to immortalize your IT experience! ✨
+          No patient feedback recorded yet. Your feedback helps me improve my care.
         </p>
       </div>
     );
@@ -71,7 +71,7 @@ function RecentRatings({ refreshTrigger }) {
 
   return (
     <div className="recent-ratings">
-      <h3>📜 Wall of Fame</h3>
+      <h3>📋 Patient Feedback Log</h3>
       <div className="ratings-list">
         {ratings.map((rating) => (
           <div key={rating.id} className={`rating-card stars-${rating.stars}`}>

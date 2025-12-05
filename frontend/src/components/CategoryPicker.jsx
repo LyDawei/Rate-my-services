@@ -1,7 +1,7 @@
 function CategoryPicker({ categories, selectedCategory, setSelectedCategory, disabled = false }) {
   return (
     <div className="category-picker">
-      <h3>What kind of IT magic was performed?</h3>
+      <h3>What type of care was provided?</h3>
       <div className="category-grid">
         {categories.map((category) => (
           <button

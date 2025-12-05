@@ -1,6 +1,6 @@
 /**
- * 🧙‍♂️ Rate My IT Services - The Sacred Server
- * Where gratitude flows and roasts are welcomed
+ * 🤖 Baymax IT Care - Backend Server
+ * "Hello. I am Baymax, your personal IT healthcare companion."
  */
 
 const express = require('express');
@@ -15,40 +15,40 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Fun response messages for different star ratings
-const THANK_YOU_MESSAGES = {
+// Baymax response messages based on satisfaction level
+const BAYMAX_RESPONSES = {
   1: [
-    "Ouch! But hey, feedback is feedback. We'll try harder! 😅",
-    "Well, at least you're honest. Noted! 📝",
-    "One star? The IT gods weep, but we shall improve!"
+    "I detect signs of dissatisfaction. I will add this to my care improvement protocols.",
+    "Your feedback has been recorded. I am sorry you are not satisfied with your care.",
+    "I understand. I will scan for ways to improve my IT healthcare services."
   ],
   2: [
-    "Room for improvement noted! We're on it! 💪",
-    "Two stars... we've had worse days! Thanks for the honesty!",
-    "Mediocre is just 'great' in disguise. We'll get there!"
+    "I sense there is room for improvement. Your feedback will help me provide better care.",
+    "Thank you for your honesty. I will update my caregiving protocols accordingly.",
+    "I have noted your concerns. Continuous improvement is part of my programming."
   ],
   3: [
-    "Right down the middle! Perfectly balanced, as all things should be.",
-    "Three stars - the IT equivalent of 'it works, don't touch it'",
-    "Average today, legendary tomorrow! Thanks! ⭐⭐⭐"
+    "Your satisfaction level is moderate. I will strive to exceed expectations next time.",
+    "Thank you. I am programmed to provide excellent care. I will try harder.",
+    "Noted. A satisfied patient is a healthy patient. I aim for higher satisfaction."
   ],
   4: [
-    "Four stars! So close to perfection! 🌟",
-    "Almost perfect - like a computer that only freezes occasionally!",
-    "Four stars! We're blushing over here! 😊"
+    "I am pleased you are mostly satisfied with your care. Ba-la-la-la-la.",
+    "Your positive feedback has been recorded. This makes me feel... useful.",
+    "Four out of five. I am glad I could help improve your technical wellbeing."
   ],
   5: [
-    "FIVE STARS! You're too kind! 🏆✨",
-    "Legendary status achieved! The IT gods smile upon us!",
-    "Perfect score! This is going on the fridge! ⭐⭐⭐⭐⭐",
-    "Five stars?! Quick, someone screenshot this!",
-    "We shall frame this rating in the Hall of IT Fame!"
+    "I am satisfied with my care. Ba-la-la-la-la. 👊",
+    "Maximum satisfaction detected! Your happiness is my primary directive.",
+    "Five stars! I will add this to my database of successful patient outcomes.",
+    "Excellent! I cannot deactivate until you say you are satisfied with your care. And you are!",
+    "Your satisfaction levels are optimal. Fist bump? Ba-la-la-la-la. 👊"
   ]
 };
 
-// Get a random thank you message based on stars
-function getThankYouMessage(stars) {
-  const messages = THANK_YOU_MESSAGES[stars] || THANK_YOU_MESSAGES[3];
+// Get a random Baymax response based on stars
+function getBaymaxResponse(stars) {
+  const messages = BAYMAX_RESPONSES[stars] || BAYMAX_RESPONSES[3];
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
@@ -56,7 +56,7 @@ function getThankYouMessage(stars) {
 
 /**
  * GET /api/categories
- * Returns all the legendary categories of IT wizardry
+ * Returns all care categories
  */
 app.get('/api/categories', (req, res) => {
   res.json({
@@ -67,7 +67,7 @@ app.get('/api/categories', (req, res) => {
 
 /**
  * POST /api/ratings
- * Submit a new rating to the sacred vault
+ * Submit a new care rating
  */
 app.post('/api/ratings', (req, res) => {
   try {
@@ -77,7 +77,7 @@ app.post('/api/ratings', (req, res) => {
     if (!stars || stars < 1 || stars > 5) {
       return res.status(400).json({
         success: false,
-        error: "Stars must be between 1 and 5. We don't do 6-star ratings here... yet."
+        error: "On a scale of 1 to 5, please rate your satisfaction. I cannot process values outside this range."
       });
     }
 
@@ -85,7 +85,7 @@ app.post('/api/ratings', (req, res) => {
     if (!category || !CATEGORIES[category]) {
       return res.status(400).json({
         success: false,
-        error: "Invalid category. Pick one from the sacred list!"
+        error: "Please select a valid care category. This helps me improve my diagnostics."
       });
     }
 
@@ -98,7 +98,7 @@ app.post('/api/ratings', (req, res) => {
       stars,
       category,
       comment || null,
-      reviewer_name || 'Anonymous Hero'
+      reviewer_name || 'Anonymous Patient'
     );
 
     const newRating = db.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
@@ -106,7 +106,7 @@ app.post('/api/ratings', (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: getThankYouMessage(stars),
+      message: getBaymaxResponse(stars),
       rating: {
         ...newRating,
         category_name: categoryInfo.name,
@@ -117,14 +117,14 @@ app.post('/api/ratings', (req, res) => {
     console.error('Error creating rating:', error);
     res.status(500).json({
       success: false,
-      error: "Something went wrong in the IT dimension. Try again!"
+      error: "I have detected a malfunction in my feedback processing unit. Please try again."
     });
   }
 });
 
 /**
  * GET /api/ratings
- * Retrieve all ratings from the vault (with pagination)
+ * Retrieve all ratings
  */
 app.get('/api/ratings', (req, res) => {
   try {
@@ -145,7 +145,7 @@ app.get('/api/ratings', (req, res) => {
       return {
         ...rating,
         category_name: categoryInfo.name || rating.category,
-        category_emoji: categoryInfo.emoji || "✨"
+        category_emoji: categoryInfo.emoji || "💊"
       };
     });
 
@@ -160,14 +160,14 @@ app.get('/api/ratings', (req, res) => {
     console.error('Error fetching ratings:', error);
     res.status(500).json({
       success: false,
-      error: "The vault is temporarily sealed. Try again!"
+      error: "Patient records temporarily unavailable. Please try again."
     });
   }
 });
 
 /**
  * GET /api/stats
- * Get fun statistics about IT heroism
+ * Get care statistics
  */
 app.get('/api/stats', (req, res) => {
   try {
@@ -202,32 +202,32 @@ app.get('/api/stats', (req, res) => {
       return {
         ...stat,
         category_name: categoryInfo.name || stat.category,
-        category_emoji: categoryInfo.emoji || "✨",
+        category_emoji: categoryInfo.emoji || "💊",
         avg_stars: Math.round(stat.avg_stars * 10) / 10
       };
     });
 
-    // Fun titles based on average rating
-    let heroTitle = "IT Intern";
-    if (avgStars >= 4.5) heroTitle = "Legendary IT Wizard 🧙‍♂️";
-    else if (avgStars >= 4) heroTitle = "Senior IT Sorcerer ✨";
-    else if (avgStars >= 3.5) heroTitle = "IT Knight ⚔️";
-    else if (avgStars >= 3) heroTitle = "IT Squire 🛡️";
-    else if (avgStars >= 2) heroTitle = "IT Apprentice 📚";
+    // Baymax care level titles based on average rating
+    let careLevel = "Healthcare Companion in Training";
+    if (avgStars >= 4.5) careLevel = "Superior Healthcare Companion 🏆";
+    else if (avgStars >= 4) careLevel = "Advanced Care Provider 🌟";
+    else if (avgStars >= 3.5) careLevel = "Certified IT Healthcare Companion";
+    else if (avgStars >= 3) careLevel = "IT Care Provider";
+    else if (avgStars >= 2) careLevel = "Healthcare Companion in Training";
 
     res.json({
       success: true,
       stats: {
         total_ratings: totalRatings,
         average_stars: Math.round(avgStars * 100) / 100,
-        hero_title: heroTitle,
+        hero_title: careLevel,
         ratings_this_week: recentCount,
         star_distribution: starDistribution,
         category_breakdown: enrichedCategoryStats,
         fun_facts: {
-          printers_tamed: categoryStats.find(c => c.category === 'printer_taming')?.count || 0,
-          crises_averted: categoryStats.find(c => c.category === 'crisis_averted')?.count || 0,
-          passwords_resurrected: categoryStats.find(c => c.category === 'password_resurrection')?.count || 0
+          printers_rehabilitated: categoryStats.find(c => c.category === 'printer_rehabilitation')?.count || 0,
+          emergencies_handled: categoryStats.find(c => c.category === 'emergency_response')?.count || 0,
+          passwords_recovered: categoryStats.find(c => c.category === 'password_recovery')?.count || 0
         }
       }
     });
@@ -235,7 +235,7 @@ app.get('/api/stats', (req, res) => {
     console.error('Error fetching stats:', error);
     res.status(500).json({
       success: false,
-      error: "Stats machine is recalibrating. Try again!"
+      error: "Statistics module is recalibrating. Please try again."
     });
   }
 });
@@ -247,7 +247,7 @@ app.get('/api/stats', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
-    message: "The IT Rating Server is alive and well! 🎉",
+    message: "Hello. I am Baymax, your personal IT healthcare companion. I am fully operational.",
     uptime: process.uptime()
   });
 });
@@ -255,14 +255,14 @@ app.get('/api/health', (req, res) => {
 // Start the server
 app.listen(PORT, () => {
   console.log(`
-  🧙‍♂️ ================================== 🧙‍♂️
+  🤖 ================================== 🤖
 
-     Rate My IT Services - Backend
+     Baymax IT Care - Backend
      Running on port ${PORT}
 
-     Ready to receive gratitude!
-     (and the occasional roast)
+     "Hello. I am Baymax, your personal
+      IT healthcare companion."
 
-  🧙‍♂️ ================================== 🧙‍♂️
+  🤖 ================================== 🤖
   `);
 });

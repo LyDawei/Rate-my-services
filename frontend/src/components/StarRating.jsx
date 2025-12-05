@@ -1,11 +1,12 @@
 import { useState } from 'react';
 
-const STAR_LABELS = {
-  1: "Meh...",
-  2: "Could be better",
-  3: "Solid work!",
-  4: "Great job!",
-  5: "LEGENDARY!"
+// Baymax satisfaction scale labels
+const SATISFACTION_LABELS = {
+  1: "I detect significant discomfort",
+  2: "Some discomfort detected",
+  3: "Moderate satisfaction",
+  4: "High satisfaction detected",
+  5: "I am satisfied with my care!"
 };
 
 function StarRating({ rating, setRating, disabled = false }) {
@@ -32,7 +33,7 @@ function StarRating({ rating, setRating, disabled = false }) {
         ))}
       </div>
       <p className="star-label">
-        {hover > 0 ? STAR_LABELS[hover] : (rating > 0 ? STAR_LABELS[rating] : "Click to rate!")}
+        {hover > 0 ? SATISFACTION_LABELS[hover] : (rating > 0 ? SATISFACTION_LABELS[rating] : "On a scale of 1 to 5...")}
       </p>
     </div>
   );

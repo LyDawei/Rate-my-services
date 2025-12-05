@@ -1,25 +1,24 @@
 /* ===========================================
-   Rate My IT Services - Whimsical Styles
-   Where CSS meets IT heroism
+   Baymax IT Care - Styling
+   "Hello. I am Baymax, your personal IT healthcare companion."
    =========================================== */
 
 :root {
-  --primary: #6366f1;
-  --primary-dark: #4f46e5;
-  --primary-light: #a5b4fc;
-  --secondary: #f59e0b;
-  --secondary-light: #fcd34d;
-  --success: #10b981;
-  --error: #ef4444;
-  --bg-dark: #1e1b4b;
-  --bg-medium: #312e81;
-  --bg-light: #3730a3;
-  --text-primary: #f8fafc;
-  --text-secondary: #c7d2fe;
-  --text-muted: #94a3b8;
-  --card-bg: rgba(255, 255, 255, 0.08);
-  --card-border: rgba(255, 255, 255, 0.12);
-  --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --baymax-white: #ffffff;
+  --baymax-light: #f5f5f5;
+  --baymax-gray: #e8e8e8;
+  --baymax-dark: #4a4a4a;
+  --baymax-red: #e53935;
+  --baymax-red-dark: #c62828;
+  --baymax-red-light: #ff6f60;
+  --baymax-green: #43a047;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --card-bg: #ffffff;
+  --card-border: #e0e0e0;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
 
 * {
@@ -29,8 +28,8 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 50%, var(--bg-light) 100%);
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  background: linear-gradient(180deg, var(--baymax-light) 0%, var(--baymax-gray) 100%);
   min-height: 100vh;
   color: var(--text-primary);
 }
@@ -46,35 +45,44 @@ body {
 .app-header {
   text-align: center;
   padding: 2rem 1rem;
-  background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 100%);
+  background: var(--baymax-white);
+  border-bottom: 3px solid var(--baymax-red);
+  box-shadow: var(--shadow);
 }
 
-.app-header h1 {
-  font-size: 2.5rem;
+.baymax-icon {
+  font-size: 4rem;
   margin-bottom: 0.5rem;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
   animation: float 3s ease-in-out infinite;
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  50% { transform: translateY(-10px); }
+}
+
+.app-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-weight: 300;
+  letter-spacing: 2px;
 }
 
 .tagline {
   color: var(--text-secondary);
   font-size: 1.1rem;
+  font-style: italic;
 }
 
 .subtitle {
   font-size: 0.9rem;
   color: var(--text-muted);
-  font-style: italic;
 }
 
 .app-main {
   flex: 1;
-  padding: 0 1rem 2rem;
+  padding: 2rem 1rem;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
@@ -102,14 +110,17 @@ body {
 .app-footer {
   text-align: center;
   padding: 1.5rem;
-  background: rgba(0,0,0,0.2);
-  color: var(--text-muted);
+  background: var(--baymax-white);
+  border-top: 3px solid var(--baymax-red);
+  color: var(--text-secondary);
   font-size: 0.9rem;
+  font-style: italic;
 }
 
 .footer-note {
-  font-style: italic;
-  opacity: 0.7;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--baymax-red);
 }
 
 /* ============ Rating Form ============ */
@@ -117,21 +128,27 @@ body {
 .rating-form {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 16px;
+  border-radius: 30px;
   padding: 2rem;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
+  transition: box-shadow 0.3s ease;
+}
+
+.rating-form:hover {
+  box-shadow: var(--shadow-hover);
 }
 
 .rating-form h2 {
   font-size: 1.5rem;
   margin-bottom: 0.25rem;
-  color: var(--secondary-light);
+  color: var(--text-primary);
+  font-weight: 400;
 }
 
 .form-subtitle {
   color: var(--text-muted);
   margin-bottom: 1.5rem;
+  font-style: italic;
 }
 
 .form-section {
@@ -141,14 +158,14 @@ body {
 .form-section > label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-secondary);
 }
 
 /* Messages */
 .message {
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 20px;
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
@@ -162,15 +179,15 @@ body {
 }
 
 .message.success {
-  background: rgba(16, 185, 129, 0.2);
-  border: 1px solid var(--success);
-  color: #6ee7b7;
+  background: #e8f5e9;
+  border: 2px solid var(--baymax-green);
+  color: #2e7d32;
 }
 
 .message.error {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid var(--error);
-  color: #fca5a5;
+  background: #ffebee;
+  border: 2px solid var(--baymax-red);
+  color: var(--baymax-red-dark);
 }
 
 .message-icon {
@@ -209,28 +226,28 @@ body {
 
 .star {
   font-size: 2.5rem;
-  color: var(--text-muted);
+  color: var(--baymax-gray);
   transition: color 0.2s ease;
 }
 
 .star-btn.active .star {
-  color: var(--secondary);
-  text-shadow: 0 0 10px var(--secondary);
+  color: var(--baymax-red);
 }
 
 .star-label {
   margin-top: 0.75rem;
   font-size: 1rem;
-  color: var(--secondary-light);
+  color: var(--text-secondary);
   font-weight: 500;
   min-height: 1.5rem;
+  font-style: italic;
 }
 
 /* ============ Category Picker ============ */
 
 .category-picker h3 {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-secondary);
   margin-bottom: 0.75rem;
 }
@@ -248,9 +265,9 @@ body {
 }
 
 .category-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--baymax-light);
   border: 2px solid transparent;
-  border-radius: 10px;
+  border-radius: 15px;
   padding: 0.75rem 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -261,13 +278,15 @@ body {
 }
 
 .category-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--primary-light);
+  background: var(--baymax-white);
+  border-color: var(--baymax-red-light);
+  transform: translateY(-2px);
 }
 
 .category-btn.selected {
-  background: rgba(99, 102, 241, 0.3);
-  border-color: var(--primary);
+  background: var(--baymax-white);
+  border-color: var(--baymax-red);
+  box-shadow: 0 2px 10px rgba(229, 57, 53, 0.2);
 }
 
 .category-btn:disabled {
@@ -291,20 +310,21 @@ textarea,
 input[type="text"] {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
+  background: var(--baymax-light);
+  border: 2px solid var(--card-border);
+  border-radius: 15px;
   color: var(--text-primary);
   font-size: 1rem;
   font-family: inherit;
   resize: vertical;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 textarea:focus,
 input[type="text"]:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--baymax-red);
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.1);
 }
 
 textarea::placeholder,
@@ -325,9 +345,9 @@ input::placeholder {
 .submit-btn {
   width: 100%;
   padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: var(--baymax-red);
   border: none;
-  border-radius: 10px;
+  border-radius: 25px;
   color: white;
   font-size: 1.1rem;
   font-weight: 600;
@@ -340,8 +360,9 @@ input::placeholder {
 }
 
 .submit-btn:hover:not(:disabled) {
+  background: var(--baymax-red-dark);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 20px rgba(229, 57, 53, 0.3);
 }
 
 .submit-btn:disabled {
@@ -368,17 +389,17 @@ input::placeholder {
 .recent-ratings {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 16px;
+  border-radius: 30px;
   padding: 1.5rem;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
 }
 
 .stats-display h3,
 .recent-ratings h3 {
   font-size: 1.25rem;
   margin-bottom: 1rem;
-  color: var(--secondary-light);
+  color: var(--text-primary);
+  font-weight: 400;
 }
 
 .stats-display h4 {
@@ -391,16 +412,17 @@ input::placeholder {
 .hero-title-section {
   text-align: center;
   padding: 1rem;
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: 10px;
+  background: linear-gradient(135deg, #ffebee 0%, #fff 100%);
+  border-radius: 20px;
   margin-bottom: 1rem;
+  border: 2px solid var(--baymax-red-light);
 }
 
 .hero-title {
   display: block;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--secondary-light);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--baymax-red);
   margin-bottom: 0.5rem;
 }
 
@@ -414,12 +436,12 @@ input::placeholder {
 .avg-number {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--secondary);
+  color: var(--baymax-red);
 }
 
 .avg-stars {
   font-size: 1.5rem;
-  color: var(--secondary);
+  color: var(--baymax-red);
 }
 
 .avg-label {
@@ -435,8 +457,8 @@ input::placeholder {
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  background: var(--baymax-light);
+  border-radius: 15px;
   padding: 0.75rem;
   text-align: center;
 }
@@ -445,7 +467,7 @@ input::placeholder {
   display: block;
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--primary-light);
+  color: var(--baymax-red);
 }
 
 .stat-label {
@@ -469,20 +491,20 @@ input::placeholder {
 .star-bar .star-label {
   width: 2rem;
   font-size: 0.85rem;
-  color: var(--secondary);
+  color: var(--baymax-red);
 }
 
 .bar-container {
   flex: 1;
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--baymax-gray);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  background: linear-gradient(90deg, var(--baymax-red-light) 0%, var(--baymax-red) 100%);
   border-radius: 4px;
   transition: width 0.5s ease;
 }
@@ -506,8 +528,8 @@ input::placeholder {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
+  background: var(--baymax-light);
+  border-radius: 10px;
 }
 
 .category-stat .cat-emoji {
@@ -517,6 +539,7 @@ input::placeholder {
 .category-stat .cat-name {
   flex: 1;
   font-size: 0.85rem;
+  color: var(--text-primary);
 }
 
 .category-stat .cat-count {
@@ -526,7 +549,7 @@ input::placeholder {
 
 .category-stat .cat-avg {
   font-size: 0.85rem;
-  color: var(--secondary);
+  color: var(--baymax-red);
   font-weight: 600;
 }
 
@@ -549,10 +572,10 @@ input::placeholder {
 }
 
 .rating-card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  background: var(--baymax-light);
+  border-radius: 15px;
   padding: 1rem;
-  border-left: 4px solid var(--text-muted);
+  border-left: 4px solid var(--baymax-gray);
   transition: transform 0.2s ease;
 }
 
@@ -560,11 +583,11 @@ input::placeholder {
   transform: translateX(4px);
 }
 
-.rating-card.stars-5 { border-left-color: #10b981; }
-.rating-card.stars-4 { border-left-color: #22c55e; }
-.rating-card.stars-3 { border-left-color: #eab308; }
-.rating-card.stars-2 { border-left-color: #f97316; }
-.rating-card.stars-1 { border-left-color: #ef4444; }
+.rating-card.stars-5 { border-left-color: #43a047; }
+.rating-card.stars-4 { border-left-color: #7cb342; }
+.rating-card.stars-3 { border-left-color: #fdd835; }
+.rating-card.stars-2 { border-left-color: #ff9800; }
+.rating-card.stars-1 { border-left-color: var(--baymax-red); }
 
 .rating-header {
   display: flex;
@@ -574,7 +597,7 @@ input::placeholder {
 }
 
 .rating-stars {
-  color: var(--secondary);
+  color: var(--baymax-red);
   font-size: 1rem;
   letter-spacing: 1px;
 }
@@ -610,15 +633,15 @@ input::placeholder {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--baymax-light);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--baymax-gray);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #ccc;
 }

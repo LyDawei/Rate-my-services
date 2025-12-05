@@ -27,8 +27,8 @@ function StatsDisplay({ refreshTrigger }) {
   if (loading) {
     return (
       <div className="stats-display loading">
-        <h3>📊 IT Hero Stats</h3>
-        <p className="loading-text">Calculating heroism levels...</p>
+        <h3>🏥 Care Statistics</h3>
+        <p className="loading-text">Scanning healthcare database...</p>
       </div>
     );
   }
@@ -36,8 +36,8 @@ function StatsDisplay({ refreshTrigger }) {
   if (!stats || stats.total_ratings === 0) {
     return (
       <div className="stats-display empty">
-        <h3>📊 IT Hero Stats</h3>
-        <p>No stats yet. Submit a rating to begin the legend!</p>
+        <h3>🏥 Care Statistics</h3>
+        <p>No patient data recorded. I am ready to provide care.</p>
       </div>
     );
   }
@@ -63,38 +63,38 @@ function StatsDisplay({ refreshTrigger }) {
 
   return (
     <div className="stats-display">
-      <h3>📊 IT Hero Stats</h3>
+      <h3>🏥 Care Statistics</h3>
 
       <div className="hero-title-section">
         <span className="hero-title">{stats.hero_title}</span>
         <div className="avg-rating">
           <span className="avg-number">{stats.average_stars.toFixed(1)}</span>
           <span className="avg-stars">★</span>
-          <span className="avg-label">average</span>
+          <span className="avg-label">satisfaction</span>
         </div>
       </div>
 
       <div className="stats-grid">
         <div className="stat-card">
           <span className="stat-number">{stats.total_ratings}</span>
-          <span className="stat-label">Total Ratings</span>
+          <span className="stat-label">Patients Served</span>
         </div>
         <div className="stat-card">
           <span className="stat-number">{stats.ratings_this_week}</span>
           <span className="stat-label">This Week</span>
         </div>
         <div className="stat-card">
-          <span className="stat-number">{stats.fun_facts.printers_tamed}</span>
-          <span className="stat-label">🖨️ Printers Tamed</span>
+          <span className="stat-number">{stats.fun_facts.printers_rehabilitated || 0}</span>
+          <span className="stat-label">🖨️ Printers Healed</span>
         </div>
         <div className="stat-card">
-          <span className="stat-number">{stats.fun_facts.crises_averted}</span>
-          <span className="stat-label">🔥 Crises Averted</span>
+          <span className="stat-number">{stats.fun_facts.emergencies_handled || 0}</span>
+          <span className="stat-label">🚨 Emergencies</span>
         </div>
       </div>
 
       <div className="distribution-section">
-        <h4>Rating Distribution</h4>
+        <h4>Satisfaction Distribution</h4>
         <div className="star-distribution">
           {starDist.reverse().map(({ stars, count }) =>
             renderStarBar(stars, count, stats.total_ratings)
@@ -104,13 +104,13 @@ function StatsDisplay({ refreshTrigger }) {
 
       {stats.category_breakdown.length > 0 && (
         <div className="category-stats">
-          <h4>Top Quest Types</h4>
+          <h4>Treatment Types</h4>
           <div className="category-list">
             {stats.category_breakdown.slice(0, 5).map((cat) => (
               <div className="category-stat" key={cat.category}>
                 <span className="cat-emoji">{cat.category_emoji}</span>
                 <span className="cat-name">{cat.category_name}</span>
-                <span className="cat-count">{cat.count} quests</span>
+                <span className="cat-count">{cat.count} patients</span>
                 <span className="cat-avg">{cat.avg_stars}★</span>
               </div>
             ))}

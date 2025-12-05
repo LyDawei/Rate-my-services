@@ -15,11 +15,12 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🧙‍♂️ Rate My IT Services</h1>
+        <div className="baymax-icon">🤖</div>
+        <h1>Baymax IT Care</h1>
         <p className="tagline">
-          Your friendly neighborhood one-person IT department
+          "Hello. I am Baymax, your personal IT healthcare companion."
           <br />
-          <span className="subtitle">Now accepting gratitude and constructive roasts</span>
+          <span className="subtitle">I was alerted to the need for technical assistance.</span>
         </p>
       </header>
 
@@ -38,9 +39,9 @@ function App() {
 
       <footer className="app-footer">
         <p>
-          Made with ☕ and questionable amounts of caffeine
+          "I cannot deactivate until you say you are satisfied with your care."
           <br />
-          <span className="footer-note">Remember: Have you tried turning it off and on again?</span>
+          <span className="footer-note">Ba-la-la-la-la 👊</span>
         </p>
       </footer>
     </div>

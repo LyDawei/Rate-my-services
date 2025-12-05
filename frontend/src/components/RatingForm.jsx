@@ -25,7 +25,7 @@ function RatingForm({ onRatingSubmitted }) {
       })
       .catch(err => {
         console.error('Failed to fetch categories:', err);
-        setError('Failed to load categories. Is the server running?');
+        setError('I cannot connect to my care database. Is my server running?');
       });
   }, []);
 
@@ -35,11 +35,11 @@ function RatingForm({ onRatingSubmitted }) {
     setSubmitMessage(null);
 
     if (stars === 0) {
-      setError("Don't forget to rate with some stars!");
+      setError("On a scale of 1 to 5, how would you rate your satisfaction?");
       return;
     }
     if (!category) {
-      setError("Pick a category for the IT magic!");
+      setError("Please select a care category so I can improve my services.");
       return;
     }
 
@@ -73,11 +73,11 @@ function RatingForm({ onRatingSubmitted }) {
         // Clear success message after 5 seconds
         setTimeout(() => setSubmitMessage(null), 5000);
       } else {
-        setError(data.error || 'Something went wrong!');
+        setError(data.error || 'I have encountered an unexpected error.');
       }
     } catch (err) {
       console.error('Submit error:', err);
-      setError('Failed to submit. Is the IT wizard server running?');
+      setError('I cannot reach my care database. Please check if my server is operational.');
     } finally {
       setIsSubmitting(false);
     }
@@ -85,12 +85,12 @@ function RatingForm({ onRatingSubmitted }) {
 
   return (
     <form className="rating-form" onSubmit={handleSubmit}>
-      <h2>Rate Your IT Experience</h2>
-      <p className="form-subtitle">Your feedback fuels the IT magic! ✨</p>
+      <h2>Patient Satisfaction Survey</h2>
+      <p className="form-subtitle">I cannot deactivate until you say you are satisfied with your care.</p>
 
       {submitMessage && (
         <div className="message success">
-          <span className="message-icon">🎉</span>
+          <span className="message-icon">👊</span>
           {submitMessage}
         </div>
       )}
@@ -103,7 +103,7 @@ function RatingForm({ onRatingSubmitted }) {
       )}
 
       <div className="form-section">
-        <label>How did we do?</label>
+        <label>On a scale of 1 to 5, how would you rate your care?</label>
         <StarRating rating={stars} setRating={setStars} disabled={isSubmitting} />
       </div>
 
@@ -117,12 +117,12 @@ function RatingForm({ onRatingSubmitted }) {
       </div>
 
       <div className="form-section">
-        <label htmlFor="comment">Words of Wisdom (or Roasting)</label>
+        <label htmlFor="comment">Additional Symptoms or Feedback</label>
         <textarea
           id="comment"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Tell us how you really feel... (optional)"
+          placeholder="Describe your experience... (optional)"
           rows={3}
           disabled={isSubmitting}
           maxLength={500}
@@ -131,13 +131,13 @@ function RatingForm({ onRatingSubmitted }) {
       </div>
 
       <div className="form-section">
-        <label htmlFor="name">Your Hero Name</label>
+        <label htmlFor="name">Patient Name</label>
         <input
           type="text"
           id="name"
           value={reviewerName}
           onChange={(e) => setReviewerName(e.target.value)}
-          placeholder="Anonymous Hero"
+          placeholder="Anonymous Patient"
           disabled={isSubmitting}
           maxLength={100}
         />
@@ -151,10 +151,10 @@ function RatingForm({ onRatingSubmitted }) {
         {isSubmitting ? (
           <>
             <span className="spinner"></span>
-            Sending to the IT Hall of Fame...
+            Processing your feedback...
           </>
         ) : (
-          <>🏆 Submit Rating</>
+          <>👊 Submit Feedback</>
         )}
       </button>
     </form>

@@ -1,62 +1,62 @@
 /**
- * The Legendary Categories of IT Wizardry
- * Each one represents a noble quest completed
+ * Baymax Care Categories
+ * "I cannot deactivate until you say you are satisfied with your care."
  */
 
 const CATEGORIES = {
-  crisis_averted: {
-    id: "crisis_averted",
-    name: "Crisis Averted",
-    emoji: "🔥",
-    description: "When everything was on fire and you saved the day"
+  emergency_response: {
+    id: "emergency_response",
+    name: "Emergency Response",
+    emoji: "🚨",
+    description: "When systems were critical and immediate care was required"
   },
-  computer_whispering: {
-    id: "computer_whispering",
-    name: "Computer Whispering",
-    emoji: "🖥️",
-    description: "General PC therapy sessions"
+  computer_diagnostics: {
+    id: "computer_diagnostics",
+    name: "Computer Diagnostics",
+    emoji: "🔍",
+    description: "Scanning for technical ailments and prescribing solutions"
   },
-  password_resurrection: {
-    id: "password_resurrection",
-    name: "Password Resurrection",
-    emoji: "🔐",
-    description: "Bringing forgotten credentials back from the dead"
+  password_recovery: {
+    id: "password_recovery",
+    name: "Password Recovery",
+    emoji: "🔑",
+    description: "Restoring access to forgotten credentials"
   },
-  printer_taming: {
-    id: "printer_taming",
-    name: "Printer Taming",
+  printer_rehabilitation: {
+    id: "printer_rehabilitation",
+    name: "Printer Rehabilitation",
     emoji: "🖨️",
-    description: "The eternal struggle against paper-eating beasts"
+    description: "Physical therapy for paper-handling devices"
   },
-  email_sorcery: {
-    id: "email_sorcery",
-    name: "Email Sorcery",
-    emoji: "📧",
-    description: "Making mail mysteries disappear"
+  email_treatment: {
+    id: "email_treatment",
+    name: "Email Treatment",
+    emoji: "💌",
+    description: "Treating communication disorders and inbox ailments"
   },
-  network_necromancy: {
-    id: "network_necromancy",
-    name: "Network Necromancy",
-    emoji: "🌐",
-    description: "Reviving dead connections and WiFi ghosts"
+  network_recovery: {
+    id: "network_recovery",
+    name: "Network Recovery",
+    emoji: "📡",
+    description: "Restoring connectivity and treating wireless conditions"
   },
-  gadget_guidance: {
-    id: "gadget_guidance",
-    name: "Gadget Guidance",
+  device_setup: {
+    id: "device_setup",
+    name: "Device Setup",
     emoji: "📱",
-    description: "Device setup and mobile mysteries"
+    description: "New patient onboarding and device configuration"
   },
-  big_brain_project: {
-    id: "big_brain_project",
-    name: "Big Brain Project",
-    emoji: "🎯",
-    description: "Major IT initiatives requiring actual thinking"
+  major_procedure: {
+    id: "major_procedure",
+    name: "Major Procedure",
+    emoji: "🏥",
+    description: "Complex IT operations requiring extended care"
   },
-  misc_magic: {
-    id: "misc_magic",
-    name: "Misc Magic",
-    emoji: "✨",
-    description: "Everything else that defies categorization"
+  general_checkup: {
+    id: "general_checkup",
+    name: "General Checkup",
+    emoji: "💊",
+    description: "Routine maintenance and preventive care"
   }
 };
 
