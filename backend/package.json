@@ -8,7 +8,15 @@
     "dev": "node --watch server.js",
     "seed:admin": "node scripts/seed-admin.js",
     "setup:tunnel": "./scripts/setup-tunnel.sh",
-    "production": "./scripts/start-production.sh"
+    "production": "./scripts/start-production.sh",
+    "pm2:status": "npx pm2 status",
+    "pm2:logs": "npx pm2 logs",
+    "pm2:stop": "npx pm2 stop all",
+    "pm2:restart": "npx pm2 restart all",
+    "pm2:delete": "npx pm2 delete all",
+    "pm2:monit": "npx pm2 monit",
+    "pm2:save": "npx pm2 save",
+    "pm2:startup": "npx pm2 startup"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -18,6 +26,7 @@
     "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
     "express-session": "^1.18.2",
-    "helmet": "^8.0.0"
+    "helmet": "^8.0.0",
+    "pm2": "^6.0.14"
   }
 }

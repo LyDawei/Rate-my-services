@@ -1,6 +1,7 @@
 #!/bin/bash
-# Start Baymax IT Care Backend with Cloudflare Tunnel
-# This script starts both the Node.js server and the tunnel
+# Start Baymax IT Care Backend with Cloudflare Tunnel using PM2
+# This script starts both the Node.js server and the tunnel as persistent services
+# Processes will survive SSH disconnections and automatically restart on failure
 
 set -e
 
@@ -9,13 +10,29 @@ BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$BACKEND_DIR"
 
-echo "🤖 Baymax IT Care - Production Start"
-echo "====================================="
+# Track if PM2 processes were started (for cleanup on error)
+PM2_STARTED=false
+
+# Cleanup function for errors
+cleanup_on_error() {
+    if [ "$PM2_STARTED" = true ]; then
+        echo ""
+        echo "Error occurred - cleaning up PM2 processes..."
+        npx pm2 delete baymax-backend baymax-tunnel 2>/dev/null || true
+    fi
+}
+
+# Trap ERR signal for cleanup
+trap cleanup_on_error ERR
+
+echo "==============================================="
+echo "  Baymax IT Care - Production Start (PM2)"
+echo "==============================================="
 echo ""
 
 # Check for .env file
 if [ ! -f ".env" ]; then
-    echo "❌ .env file not found!"
+    echo "Error: .env file not found!"
     echo "   Run 'npm run setup:tunnel' first."
     exit 1
 fi
@@ -28,7 +45,7 @@ set +a
 # Find the tunnel config
 TUNNEL_CONFIGS=(~/.cloudflared/config-*.yml)
 if [ ! -f "${TUNNEL_CONFIGS[0]}" ]; then
-    echo "❌ No tunnel config found!"
+    echo "Error: No tunnel config found!"
     echo "   Run 'npm run setup:tunnel' first."
     exit 1
 fi
@@ -38,56 +55,34 @@ TUNNEL_CONFIG="${TUNNEL_CONFIGS[0]}"
 
 # Verify config file is readable
 if [ ! -r "$TUNNEL_CONFIG" ]; then
-    echo "❌ Cannot read tunnel config: $TUNNEL_CONFIG"
+    echo "Error: Cannot read tunnel config: $TUNNEL_CONFIG"
     exit 1
 fi
 
 echo "Using tunnel config: $TUNNEL_CONFIG"
 echo ""
 
-# PIDs for cleanup
-NODE_PID=""
-TUNNEL_PID=""
+# Create logs directory if it doesn't exist
+mkdir -p "$BACKEND_DIR/logs"
 
-# Function to cleanup on exit
-cleanup() {
-    echo ""
-    echo "🛑 Shutting down..."
+# Check if PM2 is available
+if ! command -v npx &> /dev/null; then
+    echo "Error: npx not found. Please ensure Node.js is installed."
+    exit 1
+fi
 
-    # Graceful shutdown first
-    if [ -n "$NODE_PID" ] && kill -0 "$NODE_PID" 2>/dev/null; then
-        kill "$NODE_PID" 2>/dev/null || true
-    fi
-    if [ -n "$TUNNEL_PID" ] && kill -0 "$TUNNEL_PID" 2>/dev/null; then
-        kill "$TUNNEL_PID" 2>/dev/null || true
-    fi
+# Stop any existing processes
+echo "Stopping any existing processes..."
+npx pm2 delete baymax-backend baymax-tunnel 2>/dev/null || true
 
-    # Wait a moment for graceful shutdown
-    sleep 2
+# Start with PM2
+echo "Starting services with PM2..."
+npx pm2 start ecosystem.config.cjs
+PM2_STARTED=true
 
-    # Force kill if still running
-    if [ -n "$NODE_PID" ] && kill -0 "$NODE_PID" 2>/dev/null; then
-        echo "Force killing Node.js..."
-        kill -9 "$NODE_PID" 2>/dev/null || true
-    fi
-    if [ -n "$TUNNEL_PID" ] && kill -0 "$TUNNEL_PID" 2>/dev/null; then
-        echo "Force killing tunnel..."
-        kill -9 "$TUNNEL_PID" 2>/dev/null || true
-    fi
-
-    echo "✅ Shutdown complete"
-    exit 0
-}
-
-trap cleanup SIGINT SIGTERM EXIT
-
-# Start the Node.js server
-echo "Starting Node.js server..."
-node server.js &
-NODE_PID=$!
-
-# Health check with retry
-echo "Waiting for server to be ready..."
+# Wait for backend to be healthy
+echo ""
+echo "Waiting for backend server to be ready..."
 MAX_RETRIES=30
 RETRY_COUNT=0
 SERVER_READY=false
@@ -97,47 +92,34 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         SERVER_READY=true
         break
     fi
-
-    # Check if process is still running
-    if ! kill -0 "$NODE_PID" 2>/dev/null; then
-        echo "❌ Node.js server crashed during startup!"
-        exit 1
-    fi
-
     RETRY_COUNT=$((RETRY_COUNT + 1))
     sleep 1
 done
 
 if [ "$SERVER_READY" = false ]; then
-    echo "❌ Server health check timed out after ${MAX_RETRIES}s"
-    exit 1
+    echo "Warning: Server health check timed out after ${MAX_RETRIES}s"
+    echo "   Check logs with: npm run pm2:logs"
+else
+    echo "Backend server is healthy!"
 fi
 
-echo "✅ Node.js server is healthy (PID: $NODE_PID)"
+echo ""
+echo "==============================================="
+echo "  Baymax IT Care is now online!"
+echo "==============================================="
+echo ""
+echo "PM2 Management Commands:"
+echo "  npm run pm2:status  - View process status"
+echo "  npm run pm2:logs    - View logs (live)"
+echo "  npm run pm2:stop    - Stop all services"
+echo "  npm run pm2:restart - Restart all services"
+echo "  npm run pm2:monit   - Open PM2 monitor dashboard"
+echo ""
+echo "The services will persist after SSH disconnection."
+echo "To make PM2 survive system reboots, run:"
+echo "  npx pm2 save"
+echo "  npx pm2 startup"
 echo ""
 
-# Start the tunnel
-echo "Starting Cloudflare Tunnel..."
-cloudflared tunnel --config "$TUNNEL_CONFIG" run &
-TUNNEL_PID=$!
-
-# Wait a moment for tunnel to initialize
-sleep 3
-
-# Check if tunnel started
-if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
-    echo "❌ Cloudflare Tunnel failed to start!"
-    exit 1
-fi
-
-echo "✅ Cloudflare Tunnel started (PID: $TUNNEL_PID)"
-echo ""
-echo "====================================="
-echo "🎉 Baymax IT Care is now online!"
-echo "====================================="
-echo ""
-echo "Press Ctrl+C to stop both services."
-echo ""
-
-# Wait for either process to exit
-wait -n $NODE_PID $TUNNEL_PID 2>/dev/null || wait $NODE_PID $TUNNEL_PID
+# Show current status
+npx pm2 status

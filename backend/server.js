@@ -510,7 +510,7 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`
   🤖 ================================== 🤖
 
@@ -526,3 +526,44 @@ app.listen(PORT, () => {
   🤖 ================================== 🤖
   `);
 });
+
+// ============== GRACEFUL SHUTDOWN ==============
+// Handle SIGTERM and SIGINT for PM2 and other process managers
+
+let isShuttingDown = false;
+
+function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  console.log(`\n🤖 Baymax received ${signal}. Initiating graceful shutdown...`);
+
+  // Stop accepting new connections
+  server.close((err) => {
+    if (err) {
+      console.error('Error closing server:', err);
+    } else {
+      console.log('✅ Server closed - no longer accepting connections');
+    }
+
+    // Close database connection
+    try {
+      db.close();
+      console.log('✅ Database connection closed');
+    } catch (dbErr) {
+      console.error('Error closing database:', dbErr);
+    }
+
+    console.log('🤖 Goodbye! Baymax is powering down. Ba-la-la-la-la.');
+    process.exit(err ? 1 : 0);
+  });
+
+  // Force close after timeout if graceful shutdown takes too long
+  setTimeout(() => {
+    console.error('⚠️  Graceful shutdown timed out - forcing exit');
+    process.exit(1);
+  }, 4000); // Slightly less than PM2's kill_timeout (5000ms)
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
