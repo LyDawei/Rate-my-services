@@ -1,20 +1,19 @@
+import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import RatingForm from './components/RatingForm';
-// TODO: [ADMIN FEATURE] These components should be moved to an admin dashboard in a future branch.
-// The StatsDisplay and RecentRatings components are not intended for end-users submitting feedback.
-// They should only be accessible to administrators who need to view and analyze the feedback data.
-// See: StatsDisplay.jsx, RecentRatings.jsx - keep these components, just don't render them here.
-// eslint-disable-next-line no-unused-vars
-import RecentRatings from './components/RecentRatings';
-// eslint-disable-next-line no-unused-vars
-import StatsDisplay from './components/StatsDisplay';
 import BaymaxFace from './components/BaymaxFace';
 import BackgroundBlobs from './components/BackgroundBlobs';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
 import './App.css';
 
-function App() {
+/**
+ * Public Home Page - Rating submission form
+ */
+function HomePage() {
   return (
     <div className="app">
-      {/* Background blobs - simplified & static for performance */}
       <BackgroundBlobs count={3} animate={false} />
 
       <header className="app-header glass-panel">
@@ -34,14 +33,6 @@ function App() {
           <div className="form-section">
             <RatingForm />
           </div>
-
-          {/*
-            TODO: [ADMIN FEATURE] Move to admin dashboard in future branch
-            The sidebar containing StatsDisplay and RecentRatings should not be visible
-            to regular users. Create an /admin route with authentication to display:
-            - <StatsDisplay refreshTrigger={refreshKey} />
-            - <RecentRatings refreshTrigger={refreshKey} />
-          */}
         </div>
       </main>
 
@@ -54,8 +45,44 @@ function App() {
             <span className="footer-note">Ba-la-la-la-la</span>
           </p>
         </div>
+        <Link to="/admin" className="admin-link">
+          Admin Portal
+        </Link>
       </footer>
     </div>
+  );
+}
+
+/**
+ * Main App with routing
+ */
+function App() {
+  return (
+    <AuthProvider>
+      <HashRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+
+          {/* Protected admin routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Redirect /admin to dashboard (will redirect to login if not authenticated) */}
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
+    </AuthProvider>
   );
 }
 

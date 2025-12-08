@@ -7,12 +7,25 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const SQLiteStore = require('better-sqlite3-session-store')(session);
 const db = require('./database');
+const { db: authDb } = require('./auth-database');
 const CATEGORIES = require('./categories');
+const authRoutes = require('./routes/auth');
+const { requireAuth } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'baymax-dev-secret-change-in-production';
+
+// Security: Ensure SESSION_SECRET is set in production
+if (process.env.NODE_ENV === 'production' && SESSION_SECRET === 'baymax-dev-secret-change-in-production') {
+  console.error('FATAL: SESSION_SECRET must be set in production!');
+  console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  process.exit(1);
+}
 
 // Trust proxy when behind reverse proxy (Cloudflare Tunnel, nginx, etc.)
 // This is required for express-rate-limit to correctly identify clients by IP
@@ -86,12 +99,34 @@ app.use(cors({
       callback(new Error('CORS policy: Origin not allowed'));
     }
   },
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true // Enable cookies for session auth
 }));
 
 // Parse JSON bodies
 app.use(express.json());
+
+// Session middleware
+app.use(session({
+  store: new SQLiteStore({
+    client: authDb,
+    expired: {
+      clear: true,
+      intervalMs: 900000 // Clear expired sessions every 15 minutes
+    }
+  }),
+  secret: SESSION_SECRET,
+  name: 'baymax.sid',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    httpOnly: true, // Prevents XSS
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // CSRF protection
+  }
+}));
 
 // Rate limiting - prevent spam submissions
 const ratingsLimiter = rateLimit({
@@ -158,7 +193,12 @@ function getBaymaxResponse(stars) {
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
-// ============== API ROUTES ==============
+// ============== AUTH ROUTES ==============
+
+// Mount authentication routes
+app.use('/api/admin', authRoutes);
+
+// ============== PUBLIC API ROUTES ==============
 
 /**
  * GET /api/categories
@@ -268,10 +308,37 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
 });
 
 /**
- * GET /api/ratings
- * Retrieve all ratings
+ * GET /api/health
+ * Health check endpoint - also verifies database connectivity
  */
-app.get('/api/ratings', (req, res) => {
+app.get('/api/health', (req, res) => {
+  try {
+    // Verify database is accessible
+    db.prepare('SELECT 1').get();
+
+    res.json({
+      success: true,
+      message: "Hello. I am Baymax, your personal IT healthcare companion. I am fully operational.",
+      uptime: process.uptime(),
+      database: "connected"
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: "I am experiencing technical difficulties with my database connection.",
+      uptime: process.uptime(),
+      database: "disconnected"
+    });
+  }
+});
+
+// ============== PROTECTED ADMIN API ROUTES ==============
+
+/**
+ * GET /api/admin/ratings
+ * Retrieve all ratings (admin only)
+ */
+app.get('/api/admin/ratings', requireAuth, (req, res) => {
   try {
     const parsedLimit = parseInt(req.query.limit, 10);
     const limit = Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 100);
@@ -314,10 +381,49 @@ app.get('/api/ratings', (req, res) => {
 });
 
 /**
- * GET /api/stats
- * Get care statistics
+ * DELETE /api/admin/ratings/:id
+ * Delete a rating (admin only)
  */
-app.get('/api/stats', (req, res) => {
+app.delete('/api/admin/ratings/:id', requireAuth, (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid rating ID."
+      });
+    }
+
+    // Check if rating exists
+    const rating = db.prepare('SELECT * FROM ratings WHERE id = ?').get(id);
+    if (!rating) {
+      return res.status(404).json({
+        success: false,
+        error: "Rating not found."
+      });
+    }
+
+    // Delete the rating
+    db.prepare('DELETE FROM ratings WHERE id = ?').run(id);
+
+    res.json({
+      success: true,
+      message: "Patient record has been removed from the database."
+    });
+  } catch (error) {
+    console.error('Error deleting rating:', error);
+    res.status(500).json({
+      success: false,
+      error: "Error removing patient record. Please try again."
+    });
+  }
+});
+
+/**
+ * GET /api/admin/stats
+ * Get care statistics (admin only)
+ */
+app.get('/api/admin/stats', requireAuth, (req, res) => {
   try {
     const totalRatings = db.prepare('SELECT COUNT(*) as count FROM ratings').get().count;
     const avgStars = db.prepare('SELECT AVG(stars) as avg FROM ratings').get().avg || 0;
@@ -342,6 +448,17 @@ app.get('/api/stats', (req, res) => {
     const recentCount = db.prepare(`
       SELECT COUNT(*) as count FROM ratings
       WHERE created_at >= datetime('now', '-7 days')
+    `).get().count;
+
+    // Follow-up question stats
+    const resolvedIssues = db.prepare(`
+      SELECT COUNT(*) as count FROM ratings WHERE resolves_issue = 1
+    `).get().count;
+    const unresolvedIssues = db.prepare(`
+      SELECT COUNT(*) as count FROM ratings WHERE resolves_issue = 0
+    `).get().count;
+    const recurringIssues = db.prepare(`
+      SELECT COUNT(*) as count FROM ratings WHERE issue_recurrence = 1
     `).get().count;
 
     // Enrich category stats
@@ -375,6 +492,11 @@ app.get('/api/stats', (req, res) => {
         fun_facts: {
           features_built: categoryStats.find(c => c.category === 'feature_building')?.count || 0,
           bugs_fixed: categoryStats.find(c => c.category === 'bug_fixing')?.count || 0
+        },
+        issue_tracking: {
+          resolved: resolvedIssues,
+          unresolved: unresolvedIssues,
+          recurring: recurringIssues
         }
       }
     });
@@ -383,31 +505,6 @@ app.get('/api/stats', (req, res) => {
     res.status(500).json({
       success: false,
       error: "Statistics module is recalibrating. Please try again."
-    });
-  }
-});
-
-/**
- * GET /api/health
- * Health check endpoint - also verifies database connectivity
- */
-app.get('/api/health', (req, res) => {
-  try {
-    // Verify database is accessible
-    db.prepare('SELECT 1').get();
-
-    res.json({
-      success: true,
-      message: "Hello. I am Baymax, your personal IT healthcare companion. I am fully operational.",
-      uptime: process.uptime(),
-      database: "connected"
-    });
-  } catch (error) {
-    res.status(503).json({
-      success: false,
-      message: "I am experiencing technical difficulties with my database connection.",
-      uptime: process.uptime(),
-      database: "disconnected"
     });
   }
 });
@@ -423,6 +520,8 @@ app.listen(PORT, () => {
 
      "Hello. I am Baymax, your personal
       IT healthcare companion."
+
+     Admin routes: /api/admin/*
 
   🤖 ================================== 🤖
   `);
