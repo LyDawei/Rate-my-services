@@ -6,10 +6,17 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-// Ensure logs directory exists
+// Ensure logs directory exists with proper error handling
 const logsDir = path.join(__dirname, 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+try {
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+    console.log('PM2: Created logs directory at', logsDir);
+  }
+} catch (err) {
+  console.error('PM2: Failed to create logs directory:', err.message);
+  console.error('PM2: Logs will be written to default PM2 log location');
+  // Don't fail - PM2 will use default log locations if these paths don't work
 }
 
 // Find the Cloudflare tunnel config

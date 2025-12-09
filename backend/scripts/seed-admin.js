@@ -4,8 +4,13 @@
  * Creates the initial admin user for Baymax IT Care
  *
  * Usage: node scripts/seed-admin.js
+ *
+ * SECURITY: Generated passwords are written to a secure file, not logged to console
  */
 
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const {
   createAdminUser,
   usernameExists,
@@ -15,8 +20,34 @@ const {
 // Configuration - Get from environment or use defaults with generated password
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'lydawei';
 const ADMIN_DISPLAY_NAME = process.env.ADMIN_DISPLAY_NAME || 'David Ly';
-// Use environment password or generate a secure random one
-const TEMP_PASSWORD = process.env.ADMIN_PASSWORD || require('crypto').randomBytes(16).toString('base64').slice(0, 20);
+
+// Check if password was provided via environment
+const PASSWORD_PROVIDED = !!process.env.ADMIN_PASSWORD;
+const TEMP_PASSWORD = process.env.ADMIN_PASSWORD || crypto.randomBytes(16).toString('base64').slice(0, 20);
+
+// Secure credentials file path
+const CREDENTIALS_FILE = path.join(__dirname, '..', '.admin-credentials');
+
+/**
+ * Securely save generated password to a file with restricted permissions
+ * @param {string} username
+ * @param {string} password
+ */
+function saveCredentialsSecurely(username, password) {
+  const content = `# Baymax IT Care - Admin Credentials
+# Generated: ${new Date().toISOString()}
+# IMPORTANT: Delete this file after noting the password!
+#
+# Username: ${username}
+# Password: ${password}
+#
+# ⚠️  Change this password after first login!
+`;
+
+  // Write file with restricted permissions (owner read/write only)
+  fs.writeFileSync(CREDENTIALS_FILE, content, { mode: 0o600 });
+  return CREDENTIALS_FILE;
+}
 
 async function seedAdmin() {
   console.log('\n🤖 Baymax IT Care - Admin Seeder\n');
@@ -40,8 +71,19 @@ async function seedAdmin() {
     console.log(`   Display Name: ${user.display_name}`);
     console.log(`   Created At:   ${user.created_at}`);
     console.log('   ─────────────────────────────────\n');
-    console.log('   🔐 TEMPORARY PASSWORD:');
-    console.log(`   ${TEMP_PASSWORD}`);
+
+    // Handle password display securely
+    if (PASSWORD_PROVIDED) {
+      // Password was provided via environment - don't output anything about it
+      console.log('   🔐 Password was set from ADMIN_PASSWORD environment variable.');
+    } else {
+      // Password was generated - save to secure file
+      const credFile = saveCredentialsSecurely(ADMIN_USERNAME, TEMP_PASSWORD);
+      console.log('   🔐 GENERATED PASSWORD SAVED TO SECURE FILE:');
+      console.log(`   ${credFile}`);
+      console.log('\n   ⚠️  Read the password from that file, then DELETE IT!');
+      console.log('   Run: cat ' + credFile + ' && rm ' + credFile);
+    }
     console.log('\n   ⚠️  Please change this password after first login!\n');
 
     // Summary

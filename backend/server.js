@@ -10,7 +10,7 @@ const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const SQLiteStore = require('better-sqlite3-session-store')(session);
 const db = require('./database');
-const { db: authDb } = require('./auth-database');
+const { db: authDb, cleanupOldLoginAttempts } = require('./auth-database');
 const CATEGORIES = require('./categories');
 const authRoutes = require('./routes/auth');
 const { requireAuth } = require('./middleware/auth');
@@ -20,11 +20,21 @@ const PORT = process.env.PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'baymax-dev-secret-change-in-production';
 
-// Security: Ensure SESSION_SECRET is set in production
-if (process.env.NODE_ENV === 'production' && SESSION_SECRET === 'baymax-dev-secret-change-in-production') {
-  console.error('FATAL: SESSION_SECRET must be set in production!');
-  console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
-  process.exit(1);
+// Security: Validate SESSION_SECRET in production
+if (process.env.NODE_ENV === 'production') {
+  // Check if using default secret
+  if (!process.env.SESSION_SECRET || SESSION_SECRET === 'baymax-dev-secret-change-in-production') {
+    console.error('FATAL: SESSION_SECRET must be set in production!');
+    console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    process.exit(1);
+  }
+  // Validate minimum entropy (64 characters = 32 bytes of hex = 256 bits)
+  if (SESSION_SECRET.length < 64) {
+    console.error('FATAL: SESSION_SECRET must be at least 64 characters for adequate entropy!');
+    console.error('Current length:', SESSION_SECRET.length);
+    console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    process.exit(1);
+  }
 }
 
 // Trust proxy when behind reverse proxy (Cloudflare Tunnel, nginx, etc.)
@@ -387,7 +397,7 @@ app.get('/api/admin/ratings', requireAuth, (req, res) => {
 app.delete('/api/admin/ratings/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
+    if (isNaN(id) || id <= 0) {
       return res.status(400).json({
         success: false,
         error: "Invalid rating ID."
@@ -405,6 +415,9 @@ app.delete('/api/admin/ratings/:id', requireAuth, (req, res) => {
 
     // Delete the rating
     db.prepare('DELETE FROM ratings WHERE id = ?').run(id);
+
+    // Audit log: Record admin deletion
+    console.log(`[AUDIT] Admin "${req.session.username}" (ID: ${req.session.userId}) deleted rating ID ${id} at ${new Date().toISOString()}. Rating details: stars=${rating.stars}, category=${rating.category}, reviewer="${rating.reviewer_name}"`);
 
     res.json({
       success: true,
@@ -527,6 +540,26 @@ const server = app.listen(PORT, () => {
   `);
 });
 
+// ============== MAINTENANCE JOBS ==============
+
+// Cleanup old login attempts every 6 hours to prevent table bloat
+const LOGIN_ATTEMPTS_CLEANUP_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+setInterval(() => {
+  try {
+    cleanupOldLoginAttempts();
+    console.log('[MAINTENANCE] Cleaned up old login attempt records');
+  } catch (err) {
+    console.error('[MAINTENANCE] Error cleaning login attempts:', err.message);
+  }
+}, LOGIN_ATTEMPTS_CLEANUP_INTERVAL);
+
+// Run initial cleanup on startup
+try {
+  cleanupOldLoginAttempts();
+} catch (err) {
+  console.error('[MAINTENANCE] Initial login attempts cleanup failed:', err.message);
+}
+
 // ============== GRACEFUL SHUTDOWN ==============
 // Handle SIGTERM and SIGINT for PM2 and other process managers
 
@@ -546,12 +579,19 @@ function gracefulShutdown(signal) {
       console.log('✅ Server closed - no longer accepting connections');
     }
 
-    // Close database connection
+    // Close database connections
     try {
       db.close();
-      console.log('✅ Database connection closed');
+      console.log('✅ Main database connection closed');
     } catch (dbErr) {
-      console.error('Error closing database:', dbErr);
+      console.error('Error closing main database:', dbErr);
+    }
+
+    try {
+      authDb.close();
+      console.log('✅ Auth database connection closed');
+    } catch (authDbErr) {
+      console.error('Error closing auth database:', authDbErr);
     }
 
     console.log('🤖 Goodbye! Baymax is powering down. Ba-la-la-la-la.');
