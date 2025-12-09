@@ -49,6 +49,7 @@ const apps = [
     script: 'server.js',
     cwd: __dirname,
     instances: 1,
+    exec_mode: 'fork',  // NOT 'cluster'
     autorestart: true,
     watch: false,
     max_memory_restart: '1G',
@@ -63,7 +64,8 @@ const apps = [
     // Log rotation
     log_type: 'json',
     // Graceful shutdown - server.js will handle SIGINT/SIGTERM
-    kill_timeout: 5000
+    kill_timeout: 5000,
+
   }
 ];
 
