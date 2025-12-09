@@ -52,6 +52,32 @@ if (sessionsTableExists) {
   const tableInfo = db.prepare("PRAGMA table_info(sessions)").all();
   const hasExpiredColumn = tableInfo.some(col => col.name === 'expired');
   const hasExpireColumn = tableInfo.some(col => col.name === 'expire');
+  const hasSidColumn = tableInfo.some(col => col.name === 'sid');
+  const hasSessColumn = tableInfo.some(col => col.name === 'sess');
+
+  // Validate basic schema structure
+  if (!hasSidColumn || !hasSessColumn) {
+    throw new Error(
+      'Sessions table has invalid schema: missing required columns (sid, sess). ' +
+      'Please manually inspect and fix the database or delete the sessions table.'
+    );
+  }
+
+  // Handle edge case: neither expire nor expired column exists
+  if (!hasExpireColumn && !hasExpiredColumn) {
+    throw new Error(
+      'Sessions table has invalid schema: missing expire/expired column. ' +
+      'Please manually inspect and fix the database or delete the sessions table.'
+    );
+  }
+
+  // Handle edge case: both columns exist (warn but continue with 'expire')
+  if (hasExpireColumn && hasExpiredColumn) {
+    console.warn(
+      '⚠️  Sessions table has both "expire" and "expired" columns. ' +
+      'Using "expire" column. Consider removing the redundant "expired" column.'
+    );
+  }
 
   if (hasExpiredColumn && !hasExpireColumn) {
     console.log('🔄 Migrating sessions table: renaming "expired" column to "expire"...');
@@ -93,6 +119,11 @@ if (sessionsTableExists) {
       // Re-throw to prevent app from starting with corrupted state
       throw error;
     }
+  } else {
+    // Table already has correct schema - ensure index exists
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_sessions_expire ON sessions(expire)
+    `);
   }
 } else {
   // Table doesn't exist - create it with correct schema
@@ -103,12 +134,11 @@ if (sessionsTableExists) {
       expire TEXT NOT NULL
     )
   `);
+  // Create index for new table
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_sessions_expire ON sessions(expire)
+  `);
 }
-
-// Ensure index exists (safe to run even if it already exists)
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_sessions_expire ON sessions(expire)
-`);
 
 // Create failed login attempts table for account-level lockout
 db.exec(`
