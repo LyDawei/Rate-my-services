@@ -35,18 +35,79 @@ db.exec(`
   )
 `);
 
-// Create sessions table for express-session store
-db.exec(`
-  CREATE TABLE IF NOT EXISTS sessions (
-    sid TEXT PRIMARY KEY NOT NULL,
-    sess TEXT NOT NULL,
-    expired INTEGER NOT NULL
-  )
-`);
+// Sessions table setup for express-session store
+// CRITICAL: better-sqlite3-session-store expects:
+//   - Column name: 'expire' (NOT 'expired')
+//   - Column type: TEXT (stores ISO 8601 strings like "2025-12-10T06:57:25.824Z")
+//   - Library uses SQLite's datetime() for comparisons
+// Reference: node_modules/better-sqlite3-session-store/src/index.js:10-17
 
-// Add index for session expiry cleanup
+// Check if sessions table exists
+const sessionsTableExists = db.prepare(`
+  SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'
+`).get();
+
+if (sessionsTableExists) {
+  // Table exists - check if it has the wrong column name and migrate if needed
+  const tableInfo = db.prepare("PRAGMA table_info(sessions)").all();
+  const hasExpiredColumn = tableInfo.some(col => col.name === 'expired');
+  const hasExpireColumn = tableInfo.some(col => col.name === 'expire');
+
+  if (hasExpiredColumn && !hasExpireColumn) {
+    console.log('🔄 Migrating sessions table: renaming "expired" column to "expire"...');
+
+    // SQLite doesn't support ALTER COLUMN, so we recreate the table
+    // Wrap in transaction for atomicity - SQLite auto-rollbacks on error
+    try {
+      db.exec(`
+        BEGIN TRANSACTION;
+
+        -- Create new table with correct schema
+        CREATE TABLE sessions_new (
+          sid TEXT PRIMARY KEY NOT NULL,
+          sess TEXT NOT NULL,
+          expire TEXT NOT NULL
+        );
+
+        -- Copy data (the 'expired' column stored TEXT despite INTEGER declaration
+        -- due to SQLite's dynamic typing, so we just copy the value directly)
+        INSERT INTO sessions_new (sid, sess, expire)
+        SELECT sid, sess, expired FROM sessions;
+
+        -- Drop old table and index
+        DROP INDEX IF EXISTS idx_sessions_expired;
+        DROP TABLE sessions;
+
+        -- Rename new table
+        ALTER TABLE sessions_new RENAME TO sessions;
+
+        -- Recreate index with correct name
+        CREATE INDEX idx_sessions_expire ON sessions(expire);
+
+        COMMIT;
+      `);
+
+      console.log('✅ Sessions table migration complete!');
+    } catch (error) {
+      console.error('❌ Sessions table migration failed:', error.message);
+      // Re-throw to prevent app from starting with corrupted state
+      throw error;
+    }
+  }
+} else {
+  // Table doesn't exist - create it with correct schema
+  db.exec(`
+    CREATE TABLE sessions (
+      sid TEXT PRIMARY KEY NOT NULL,
+      sess TEXT NOT NULL,
+      expire TEXT NOT NULL
+    )
+  `);
+}
+
+// Ensure index exists (safe to run even if it already exists)
 db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_sessions_expired ON sessions(expired)
+  CREATE INDEX IF NOT EXISTS idx_sessions_expire ON sessions(expire)
 `);
 
 // Create failed login attempts table for account-level lockout
