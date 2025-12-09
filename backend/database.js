@@ -24,16 +24,29 @@ db.exec(`
 
 // Migration: Add columns for follow-up questions if they don't exist
 // This handles both new databases and existing databases
-try {
-  db.exec(`ALTER TABLE ratings ADD COLUMN resolves_issue INTEGER DEFAULT NULL`);
-} catch (e) {
-  // Column already exists, ignore
+function runMigration(sql, description) {
+  try {
+    db.exec(sql);
+    console.log(`  ✅ Migration: ${description}`);
+  } catch (e) {
+    // SQLite error "duplicate column name" indicates column exists - this is expected
+    if (e.message && e.message.includes('duplicate column name')) {
+      // Column already exists, this is fine
+    } else {
+      // Unexpected error - log it but don't crash
+      console.error(`  ⚠️  Migration warning (${description}):`, e.message);
+    }
+  }
 }
-try {
-  db.exec(`ALTER TABLE ratings ADD COLUMN issue_recurrence INTEGER DEFAULT NULL`);
-} catch (e) {
-  // Column already exists, ignore
-}
+
+runMigration(
+  `ALTER TABLE ratings ADD COLUMN resolves_issue INTEGER DEFAULT NULL`,
+  'Add resolves_issue column'
+);
+runMigration(
+  `ALTER TABLE ratings ADD COLUMN issue_recurrence INTEGER DEFAULT NULL`,
+  'Add issue_recurrence column'
+);
 
 // Add index for faster queries on created_at (if not exists)
 db.exec(`

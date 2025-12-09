@@ -6,10 +6,13 @@
 const express = require('express');
 const router = express.Router();
 const {
-  findAdminByUsername,
   findAdminById,
-  verifyPassword,
-  updateLastLogin
+  verifyCredentialsConstantTime,
+  updateLastLogin,
+  recordLoginAttempt,
+  isAccountLocked,
+  clearFailedAttempts,
+  MAX_FAILED_ATTEMPTS
 } = require('../auth-database');
 const { requireAuth, loginRateLimiter } = require('../middleware/auth');
 
@@ -20,6 +23,7 @@ const { requireAuth, loginRateLimiter } = require('../middleware/auth');
 router.post('/login', loginRateLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
+    const clientIp = req.ip;
 
     // Validate input
     if (!username || !password) {
@@ -29,24 +33,46 @@ router.post('/login', loginRateLimiter, async (req, res) => {
       });
     }
 
-    // Find user by username
-    const user = findAdminByUsername(username);
-    if (!user) {
-      // Use same error message to prevent username enumeration
-      return res.status(401).json({
+    // Check account lockout status BEFORE checking credentials
+    // This prevents timing attacks from revealing valid usernames
+    const lockoutStatus = isAccountLocked(username);
+    if (lockoutStatus.locked) {
+      const minutesRemaining = lockoutStatus.lockoutEndsAt
+        ? Math.ceil((lockoutStatus.lockoutEndsAt.getTime() - Date.now()) / 60000)
+        : 15;
+      return res.status(429).json({
         success: false,
-        error: "Invalid credentials. Please check your username and password."
+        error: `Account temporarily locked due to too many failed attempts. Try again in ${minutesRemaining} minutes.`
       });
     }
 
-    // Verify password
-    const isValid = await verifyPassword(password, user.password_hash);
-    if (!isValid) {
+    // Verify credentials using constant-time comparison
+    // This ALWAYS performs bcrypt comparison to prevent timing attacks
+    // that could enumerate valid usernames
+    const { valid, user } = await verifyCredentialsConstantTime(username, password);
+
+    if (!valid) {
+      // Record failed attempt (works for both non-existent users and wrong passwords)
+      recordLoginAttempt(username, clientIp, false);
+
+      // Check new lockout status after this failed attempt
+      const newLockoutStatus = isAccountLocked(username);
+      if (newLockoutStatus.locked) {
+        return res.status(429).json({
+          success: false,
+          error: `Account locked due to too many failed attempts. Try again in 15 minutes.`
+        });
+      }
+
       return res.status(401).json({
         success: false,
-        error: "Invalid credentials. Please check your username and password."
+        error: `Invalid credentials. ${newLockoutStatus.remainingAttempts} attempt(s) remaining before lockout.`
       });
     }
+
+    // Successful login - clear failed attempts and record success
+    clearFailedAttempts(username);
+    recordLoginAttempt(username, clientIp, true);
 
     // Update last login timestamp
     updateLastLogin(user.id);
@@ -55,20 +81,28 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     req.session.regenerate((err) => {
       if (err) {
         console.error('Session regeneration error:', err);
+        // CRITICAL: Destroy old session on regeneration failure to prevent session fixation
+        req.session.destroy(() => {});
+        res.clearCookie('baymax.sid');
         return res.status(500).json({
           success: false,
           error: "Authentication system error. Please try again."
         });
       }
 
-      // Create session with user info
+      // Create session with user info and metadata for expiry tracking
       req.session.userId = user.id;
       req.session.username = user.username;
+      req.session.createdAt = Date.now();
+      req.session.lastActivity = Date.now();
 
       // Save session and respond
       req.session.save((saveErr) => {
         if (saveErr) {
           console.error('Session save error:', saveErr);
+          // Destroy session on save error
+          req.session.destroy(() => {});
+          res.clearCookie('baymax.sid');
           return res.status(500).json({
             success: false,
             error: "Authentication system error. Please try again."
@@ -134,16 +168,31 @@ router.post('/logout', (req, res) => {
  */
 router.get('/me', requireAuth, (req, res) => {
   try {
-    const user = findAdminById(req.session.userId);
-
-    if (!user) {
-      // Session exists but user doesn't - invalid state
-      req.session.destroy();
+    // Validate userId is a valid integer
+    const userId = parseInt(req.session.userId, 10);
+    if (isNaN(userId) || userId <= 0) {
+      req.session.destroy(() => {});
+      res.clearCookie('baymax.sid');
       return res.status(401).json({
         success: false,
         error: "Session invalid. Please log in again."
       });
     }
+
+    const user = findAdminById(userId);
+
+    if (!user) {
+      // Session exists but user doesn't - invalid state
+      req.session.destroy(() => {});
+      res.clearCookie('baymax.sid');
+      return res.status(401).json({
+        success: false,
+        error: "Session invalid. Please log in again."
+      });
+    }
+
+    // Update last activity timestamp for session expiry tracking
+    req.session.lastActivity = Date.now();
 
     res.json({
       success: true,
