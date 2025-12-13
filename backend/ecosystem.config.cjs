@@ -53,9 +53,7 @@ const apps = [
     autorestart: true,
     watch: false,
     max_memory_restart: '1G',
-    env: {
-      NODE_ENV: 'production'
-    },
+    // Environment variables are loaded from .env via start-production.sh
     // Logging with rotation
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     error_file: path.join(logsDir, 'backend-error.log'),
