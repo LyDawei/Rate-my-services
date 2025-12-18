@@ -1001,7 +1001,7 @@ input::placeholder {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  max-height: 420px;
+  max-height: 600px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -1499,6 +1499,7 @@ input[type="text"]:focus-visible {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  align-items: start;
 }
 
 .admin-stats-section,
@@ -1671,6 +1672,10 @@ input[type="text"]:focus-visible {
     flex-wrap: wrap;
     justify-content: center;
   }
+
+  .ratings-list {
+    max-height: 450px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1694,5 +1699,9 @@ input[type="text"]:focus-visible {
 
   .issue-stats {
     flex-direction: column;
+  }
+
+  .ratings-list {
+    max-height: 400px;
   }
 }
