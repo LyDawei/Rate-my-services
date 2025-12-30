@@ -669,6 +669,61 @@ input::placeholder {
 
 .toggle-btn:disabled { cursor: not-allowed; opacity: 0.7; }
 
+/* Follow-up Details (conditional textarea for recurring issues) */
+.follow-up-details {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(251, 191, 36, 0.3);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.follow-up-details label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.follow-up-details .required-indicator {
+  color: var(--baymax-red);
+  font-weight: 700;
+}
+
+.follow-up-details textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 80px;
+  background: rgba(251, 191, 36, 0.05);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.follow-up-details textarea:focus {
+  outline: none;
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+}
+
+.follow-up-details textarea::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* Submit button */
 .submit-btn {
   width: 100%;
@@ -1601,6 +1656,31 @@ input[type="text"]:focus-visible {
   background: rgba(251, 191, 36, 0.2);
   color: #92400e;
   border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+/* Previous Issue Details in admin */
+.previous-issue-details {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 3px solid rgba(251, 191, 36, 0.5);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.previous-issue-details .details-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.previous-issue-details .details-text {
+  margin: 0.3rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
 }
 
 /* Issue Tracking Stats */

@@ -423,6 +423,13 @@ function AdminRecentRatings({ refreshTrigger, onDelete }) {
                   )}
                 </div>
               )}
+              {/* Show previous issue details if available */}
+              {rating.previous_issue_details && (
+                <div className="previous-issue-details">
+                  <span className="details-label">Previous occurrence:</span>
+                  <p className="details-text">"{rating.previous_issue_details}"</p>
+                </div>
+              )}
             </div>
           );
         })}

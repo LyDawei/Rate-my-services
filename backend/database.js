@@ -47,6 +47,10 @@ runMigration(
   `ALTER TABLE ratings ADD COLUMN issue_recurrence INTEGER DEFAULT NULL`,
   'Add issue_recurrence column'
 );
+runMigration(
+  `ALTER TABLE ratings ADD COLUMN previous_issue_details TEXT DEFAULT NULL`,
+  'Add previous_issue_details column'
+);
 
 // Add index for faster queries on created_at (if not exists)
 db.exec(`

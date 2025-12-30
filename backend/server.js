@@ -227,7 +227,7 @@ app.get('/api/categories', (req, res) => {
  */
 app.post('/api/ratings', ratingsLimiter, (req, res) => {
   try {
-    let { stars, category, comment, reviewer_name, resolves_issue, issue_recurrence } = req.body;
+    let { stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details } = req.body;
 
     // Validate stars
     if (!stars || stars < 1 || stars > 5 || !Number.isInteger(stars)) {
@@ -282,9 +282,32 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
     const resolvesIssueValue = normalizeBoolean(resolves_issue);
     const issueRecurrenceValue = normalizeBoolean(issue_recurrence);
 
+    // Validate and sanitize previous_issue_details
+    let previousIssueDetailsValue = null;
+    if (previous_issue_details) {
+      previousIssueDetailsValue = String(previous_issue_details).trim();
+      if (previousIssueDetailsValue.length > MAX_COMMENT_LENGTH) {
+        return res.status(400).json({
+          success: false,
+          error: `Previous issue details exceeds maximum length of ${MAX_COMMENT_LENGTH} characters.`
+        });
+      }
+      if (previousIssueDetailsValue.length === 0) {
+        previousIssueDetailsValue = null;
+      }
+    }
+
+    // If issue recurrence is true, previous_issue_details is required
+    if (issueRecurrenceValue === 1 && !previousIssueDetailsValue) {
+      return res.status(400).json({
+        success: false,
+        error: "Please describe the previous occurrence of this issue so I can better diagnose the pattern."
+      });
+    }
+
     const stmt = db.prepare(`
-      INSERT INTO ratings (stars, category, comment, reviewer_name, resolves_issue, issue_recurrence)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO ratings (stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -293,7 +316,8 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
       comment || null,
       reviewer_name || 'Anonymous Patient',
       resolvesIssueValue,
-      issueRecurrenceValue
+      issueRecurrenceValue,
+      previousIssueDetailsValue
     );
 
     const newRating = db.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
