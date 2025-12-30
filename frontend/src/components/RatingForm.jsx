@@ -13,6 +13,7 @@ function RatingForm({ onRatingSubmitted }) {
   const [reviewerName, setReviewerName] = useState('');
   const [resolvesIssue, setResolvesIssue] = useState(null);
   const [issueRecurrence, setIssueRecurrence] = useState(null);
+  const [previousIssueDetails, setPreviousIssueDetails] = useState('');
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState(null);
@@ -56,6 +57,10 @@ function RatingForm({ onRatingSubmitted }) {
       setError("Please select a care category so I can improve my services.");
       return;
     }
+    if (issueRecurrence && !previousIssueDetails.trim()) {
+      setError("Please describe the previous occurrence of this issue so I can better diagnose the pattern.");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -69,7 +74,8 @@ function RatingForm({ onRatingSubmitted }) {
           comment: comment.trim() || null,
           reviewer_name: reviewerName.trim() || null,
           resolves_issue: resolvesIssue,
-          issue_recurrence: issueRecurrence
+          issue_recurrence: issueRecurrence,
+          previous_issue_details: issueRecurrence ? previousIssueDetails.trim() : null
         })
       });
 
@@ -94,6 +100,7 @@ function RatingForm({ onRatingSubmitted }) {
           setReviewerName('');
           setResolvesIssue(null);
           setIssueRecurrence(null);
+          setPreviousIssueDetails('');
         }, 500);
 
         // Notify parent
@@ -218,10 +225,10 @@ function RatingForm({ onRatingSubmitted }) {
           <div className="toggle-buttons" role="group" aria-label="Does this resolve your issue?">
             <button
               type="button"
-              className={`toggle-btn ${resolvesIssue === true ? 'selected yes' : ''}`}
-              onClick={() => setResolvesIssue(resolvesIssue === true ? null : true)}
+              className={`toggle-btn ${resolvesIssue ? 'selected yes' : ''}`}
+              onClick={() => setResolvesIssue(resolvesIssue ? null : true)}
               disabled={isSubmitting}
-              aria-pressed={resolvesIssue === true}
+              aria-pressed={!!resolvesIssue}
             >
               Yes
             </button>
@@ -242,17 +249,26 @@ function RatingForm({ onRatingSubmitted }) {
           <div className="toggle-buttons" role="group" aria-label="Has this issue appeared before?">
             <button
               type="button"
-              className={`toggle-btn ${issueRecurrence === true ? 'selected yes' : ''}`}
-              onClick={() => setIssueRecurrence(issueRecurrence === true ? null : true)}
+              className={`toggle-btn ${issueRecurrence ? 'selected yes' : ''}`}
+              onClick={() => {
+                const newValue = issueRecurrence ? null : true;
+                setIssueRecurrence(newValue);
+                if (!newValue) {
+                  setPreviousIssueDetails('');
+                }
+              }}
               disabled={isSubmitting}
-              aria-pressed={issueRecurrence === true}
+              aria-pressed={!!issueRecurrence}
             >
               Yes
             </button>
             <button
               type="button"
               className={`toggle-btn ${issueRecurrence === false ? 'selected no' : ''}`}
-              onClick={() => setIssueRecurrence(issueRecurrence === false ? null : false)}
+              onClick={() => {
+                setIssueRecurrence(issueRecurrence === false ? null : false);
+                setPreviousIssueDetails('');
+              }}
               disabled={isSubmitting}
               aria-pressed={issueRecurrence === false}
             >
@@ -260,6 +276,28 @@ function RatingForm({ onRatingSubmitted }) {
             </button>
           </div>
         </div>
+
+        {issueRecurrence && (
+          <div className="follow-up-details">
+            <label htmlFor="previousIssueDetails">
+              Please describe the previous occurrence <span className="required-indicator">*</span>
+            </label>
+            <textarea
+              id="previousIssueDetails"
+              value={previousIssueDetails}
+              onChange={(e) => setPreviousIssueDetails(e.target.value)}
+              placeholder="When did it happen? What were the symptoms? Any relevant details..."
+              rows={3}
+              disabled={isSubmitting}
+              maxLength={500}
+              required
+              aria-required="true"
+            />
+            <span className={`char-count ${previousIssueDetails.length >= 500 ? 'at-limit' : previousIssueDetails.length >= 400 ? 'near-limit' : ''}`}>
+              {previousIssueDetails.length}/500
+            </span>
+          </div>
+        )}
       </div>
 
       <button
