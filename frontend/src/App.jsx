@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import HealthCheckWrapper from './components/HealthCheckWrapper';
 import ProtectedRoute from './components/ProtectedRoute';
 import RatingForm from './components/RatingForm';
 import BaymaxFace from './components/BaymaxFace';
@@ -58,31 +59,33 @@ function HomePage() {
  */
 function App() {
   return (
-    <AuthProvider>
-      <HashRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
+    <HealthCheckWrapper>
+      <AuthProvider>
+        <HashRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* Protected admin routes */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected admin routes */}
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Redirect /admin to dashboard (will redirect to login if not authenticated) */}
-          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            {/* Redirect /admin to dashboard (will redirect to login if not authenticated) */}
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </HashRouter>
-    </AuthProvider>
+            {/* Catch-all redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </HashRouter>
+      </AuthProvider>
+    </HealthCheckWrapper>
   );
 }
 
