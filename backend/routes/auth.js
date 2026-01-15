@@ -35,7 +35,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
     // Check account lockout status BEFORE checking credentials
     // This prevents timing attacks from revealing valid usernames
-    const lockoutStatus = isAccountLocked(username);
+    const lockoutStatus = await isAccountLocked(username);
     if (lockoutStatus.locked) {
       const minutesRemaining = lockoutStatus.lockoutEndsAt
         ? Math.ceil((lockoutStatus.lockoutEndsAt.getTime() - Date.now()) / 60000)
@@ -53,10 +53,10 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
     if (!valid) {
       // Record failed attempt (works for both non-existent users and wrong passwords)
-      recordLoginAttempt(username, clientIp, false);
+      await recordLoginAttempt(username, clientIp, false);
 
       // Check new lockout status after this failed attempt
-      const newLockoutStatus = isAccountLocked(username);
+      const newLockoutStatus = await isAccountLocked(username);
       if (newLockoutStatus.locked) {
         return res.status(429).json({
           success: false,
@@ -71,11 +71,11 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     }
 
     // Successful login - clear failed attempts and record success
-    clearFailedAttempts(username);
-    recordLoginAttempt(username, clientIp, true);
+    await clearFailedAttempts(username);
+    await recordLoginAttempt(username, clientIp, true);
 
     // Update last login timestamp
-    updateLastLogin(user.id);
+    await updateLastLogin(user.id);
 
     // Regenerate session to prevent session fixation attacks
     req.session.regenerate((err) => {
@@ -166,7 +166,7 @@ router.post('/logout', (req, res) => {
  * Get current authenticated user info
  * Used by frontend to check auth state on page load
  */
-router.get('/me', requireAuth, (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
   try {
     // Validate userId is a valid integer
     const userId = parseInt(req.session.userId, 10);
@@ -179,7 +179,7 @@ router.get('/me', requireAuth, (req, res) => {
       });
     }
 
-    const user = findAdminById(userId);
+    const user = await findAdminById(userId);
 
     if (!user) {
       // Session exists but user doesn't - invalid state

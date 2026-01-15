@@ -1,126 +1,15 @@
 /**
- * Tests for previous_issue_details field in ratings endpoint
+ * Tests for previous_issue_details field validation logic
+ *
+ * Note: Database-specific tests have been removed after PostgreSQL migration.
+ * These tests focus on the validation logic which is pure JavaScript.
  */
 
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-
 describe('ratings previous_issue_details validation', () => {
-  let testDbPath;
-  let testDb;
   let CATEGORIES;
 
-  // Helper to create a fresh test database path
-  const createTestDbPath = () => {
-    return path.join(os.tmpdir(), `test-ratings-db-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-  };
-
-  // Create mock database with ratings table
-  const createMockDatabase = (dbPath) => {
-    const db = new Database(dbPath);
-
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS ratings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        stars INTEGER NOT NULL CHECK(stars >= 1 AND stars <= 5),
-        category TEXT NOT NULL,
-        comment TEXT,
-        reviewer_name TEXT DEFAULT 'Anonymous Patient',
-        resolves_issue INTEGER DEFAULT NULL,
-        issue_recurrence INTEGER DEFAULT NULL,
-        previous_issue_details TEXT DEFAULT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    return db;
-  };
-
   beforeEach(() => {
-    testDbPath = createTestDbPath();
-    testDb = createMockDatabase(testDbPath);
-
-    // Load categories
     CATEGORIES = require('../categories');
-  });
-
-  afterEach(() => {
-    if (testDb) {
-      testDb.close();
-    }
-    if (testDbPath && fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
-  });
-
-  describe('previous_issue_details field storage', () => {
-    test('stores previous_issue_details when issue_recurrence is true', () => {
-      const stmt = testDb.prepare(`
-        INSERT INTO ratings (stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      const result = stmt.run(
-        5,
-        'bug_fixing',
-        'Great service',
-        'Test User',
-        1,
-        1,
-        'This issue happened last month'
-      );
-
-      const rating = testDb.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
-
-      expect(rating.issue_recurrence).toBe(1);
-      expect(rating.previous_issue_details).toBe('This issue happened last month');
-    });
-
-    test('allows null previous_issue_details when issue_recurrence is false', () => {
-      const stmt = testDb.prepare(`
-        INSERT INTO ratings (stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      const result = stmt.run(
-        4,
-        'feature_building',
-        'Good work',
-        'Another User',
-        1,
-        0,
-        null
-      );
-
-      const rating = testDb.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
-
-      expect(rating.issue_recurrence).toBe(0);
-      expect(rating.previous_issue_details).toBeNull();
-    });
-
-    test('allows null previous_issue_details when issue_recurrence is null', () => {
-      const stmt = testDb.prepare(`
-        INSERT INTO ratings (stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      const result = stmt.run(
-        3,
-        'consultation',
-        null,
-        'Anonymous Patient',
-        null,
-        null,
-        null
-      );
-
-      const rating = testDb.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
-
-      expect(rating.issue_recurrence).toBeNull();
-      expect(rating.previous_issue_details).toBeNull();
-    });
   });
 
   describe('validation logic (mimicking server.js behavior)', () => {
@@ -135,7 +24,7 @@ describe('ratings previous_issue_details validation', () => {
 
     // Mimic validation logic from server.js
     const validateAndPrepareData = (data) => {
-      const { stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details } = data;
+      const { stars, category, comment, issue_recurrence, previous_issue_details } = data;
 
       const errors = [];
 
@@ -264,29 +153,6 @@ describe('ratings previous_issue_details validation', () => {
       });
 
       expect(result.previousIssueDetailsValue).toBe('This has extra spaces');
-    });
-  });
-
-  describe('database column migration', () => {
-    test('previous_issue_details column exists in schema', () => {
-      const tableInfo = testDb.prepare("PRAGMA table_info(ratings)").all();
-      const columnNames = tableInfo.map(col => col.name);
-
-      expect(columnNames).toContain('previous_issue_details');
-    });
-
-    test('previous_issue_details column allows TEXT type', () => {
-      const tableInfo = testDb.prepare("PRAGMA table_info(ratings)").all();
-      const column = tableInfo.find(col => col.name === 'previous_issue_details');
-
-      expect(column.type).toBe('TEXT');
-    });
-
-    test('previous_issue_details column has NULL default', () => {
-      const tableInfo = testDb.prepare("PRAGMA table_info(ratings)").all();
-      const column = tableInfo.find(col => col.name === 'previous_issue_details');
-
-      expect(column.dflt_value).toBe('NULL');
     });
   });
 });

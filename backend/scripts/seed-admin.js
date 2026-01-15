@@ -7,11 +7,13 @@
  *
  * SECURITY: Generated passwords are written to a secure file, not logged to console
  */
-
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { initializeDatabase, closePool } = require('../database');
 const {
+  initializeAuthDatabase,
   createAdminUser,
   usernameExists,
   hasAdminUsers
@@ -41,7 +43,7 @@ function saveCredentialsSecurely(username, password) {
 # Username: ${username}
 # Password: ${password}
 #
-# ⚠️  Change this password after first login!
+# Change this password after first login!
 `;
 
   // Write file with restricted permissions (owner read/write only)
@@ -50,13 +52,17 @@ function saveCredentialsSecurely(username, password) {
 }
 
 async function seedAdmin() {
-  console.log('\n🤖 Baymax IT Care - Admin Seeder\n');
+  console.log('\nBaymax IT Care - Admin Seeder\n');
   console.log('================================\n');
 
   try {
+    // Initialize databases first
+    await initializeDatabase();
+    await initializeAuthDatabase();
+
     // Check if user already exists
-    if (usernameExists(ADMIN_USERNAME)) {
-      console.log(`⚠️  Admin user "${ADMIN_USERNAME}" already exists.`);
+    if (await usernameExists(ADMIN_USERNAME)) {
+      console.log(`Admin user "${ADMIN_USERNAME}" already exists.`);
       console.log('   No changes made.\n');
       return;
     }
@@ -64,7 +70,7 @@ async function seedAdmin() {
     // Create the admin user
     const user = await createAdminUser(ADMIN_USERNAME, TEMP_PASSWORD, ADMIN_DISPLAY_NAME);
 
-    console.log('✅ Admin user created successfully!\n');
+    console.log('Admin user created successfully!\n');
     console.log('   User Details:');
     console.log('   ─────────────────────────────────');
     console.log(`   Username:     ${user.username}`);
@@ -75,36 +81,38 @@ async function seedAdmin() {
     // Handle password display securely
     if (PASSWORD_PROVIDED) {
       // Password was provided via environment - don't output anything about it
-      console.log('   🔐 Password was set from ADMIN_PASSWORD environment variable.');
+      console.log('   Password was set from ADMIN_PASSWORD environment variable.');
     } else {
       // Password was generated - save to secure file
       const credFile = saveCredentialsSecurely(ADMIN_USERNAME, TEMP_PASSWORD);
-      console.log('   🔐 GENERATED PASSWORD SAVED TO SECURE FILE:');
+      console.log('   GENERATED PASSWORD SAVED TO SECURE FILE:');
       console.log(`   ${credFile}`);
-      console.log('\n   ⚠️  Read the password from that file, then DELETE IT!');
+      console.log('\n   Read the password from that file, then DELETE IT!');
       console.log('   Run: cat ' + credFile + ' && rm ' + credFile);
     }
-    console.log('\n   ⚠️  Please change this password after first login!\n');
+    console.log('\n   Please change this password after first login!\n');
 
     // Summary
-    const totalAdmins = hasAdminUsers();
-    console.log(`📊 Total admin users in system: ${totalAdmins ? '1+' : '0'}\n`);
+    const totalAdmins = await hasAdminUsers();
+    console.log(`Total admin users in system: ${totalAdmins ? '1+' : '0'}\n`);
 
   } catch (error) {
-    if (error.message?.includes('UNIQUE constraint failed')) {
-      console.log(`⚠️  Admin user "${ADMIN_USERNAME}" already exists.`);
+    if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+      console.log(`Admin user "${ADMIN_USERNAME}" already exists.`);
     } else {
-      console.error('❌ Error creating admin user:', error.message);
+      console.error('Error creating admin user:', error.message);
       process.exit(1);
     }
   }
 }
 
 // Run the seeder
-seedAdmin().then(() => {
-  console.log('🏁 Seed script completed.\n');
+seedAdmin().then(async () => {
+  console.log('Seed script completed.\n');
+  await closePool();
   process.exit(0);
-}).catch(error => {
+}).catch(async (error) => {
   console.error('Fatal error:', error);
+  await closePool();
   process.exit(1);
 });

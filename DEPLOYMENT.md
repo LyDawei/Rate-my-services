@@ -1,211 +1,147 @@
-# Deployment Guide: Vercel Frontend + RPi5 Backend
+# Deployment Guide: Render
 
-This guide covers deploying Baymax IT Care with:
-- **Frontend**: Vercel (free tier)
-- **Backend**: Raspberry Pi 5 with Cloudflare Tunnel (free tier)
+This guide covers deploying Baymax IT Care to Render (free tier):
+- **Frontend**: Render Static Site
+- **Backend**: Render Web Service
+- **Database**: Render PostgreSQL
 
 ## Architecture
 
 ```
-┌─────────────────────────┐         HTTPS          ┌──────────────────────────┐
-│   Vercel (Frontend)     │ ◄────────────────────► │   Cloudflare Tunnel      │
-│   React + Vite          │                        │                          │
-│   baymax.vercel.app     │                        │   api.lydawei.com        │
+┌─────────────────────────┐                        ┌──────────────────────────┐
+│   Render Static Site    │  ◄──── HTTPS ────►    │   Render Web Service     │
+│   (Frontend)            │                        │   (Backend)              │
+│   React + Vite          │                        │   Express + Node.js      │
+│   baymax-frontend       │                        │   baymax-api             │
 └─────────────────────────┘                        └────────────┬─────────────┘
                                                                 │
-                                                                │ localhost:3001
+                                                                │ DATABASE_URL
                                                                 ▼
                                                    ┌──────────────────────────┐
-                                                   │   Raspberry Pi 5         │
-                                                   │   Express + SQLite       │
-                                                   │   (your local server)    │
+                                                   │   Render PostgreSQL      │
+                                                   │   baymax-db              │
+                                                   │   (managed database)     │
                                                    └──────────────────────────┘
 ```
 
 ## Prerequisites
 
-- A Cloudflare account (free)
-- A domain added to Cloudflare
-- Node.js 18+ on your RPi5
-- A Vercel account (free)
+- A Render account (free)
+- Git repository with your code (GitHub, GitLab, etc.)
 
 ---
 
-## Part 1: Backend Setup (Raspberry Pi 5)
+## Part 1: Deploy Using Blueprint (Recommended)
 
-### 1.1 Install cloudflared
+The easiest way to deploy is using the `render.yaml` Blueprint:
 
-```bash
-# Download for ARM64 (RPi5)
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb -o cloudflared.deb
-sudo dpkg -i cloudflared.deb
-rm cloudflared.deb
-
-# Verify installation
-cloudflared --version
-```
-
-### 1.2 Clone and Setup Backend
+### 1.1 Push Code to GitHub
 
 ```bash
-# Clone your repo (or copy the backend folder)
-cd ~
-git clone <your-repo-url> baymax-it-care
-cd baymax-it-care/backend
-
-# Install dependencies
-npm install
+git add .
+git commit -m "Prepare for Render deployment"
+git push origin main
 ```
 
-### 1.3 Setup Cloudflare Tunnel
+### 1.2 Deploy via Render Dashboard
 
-Run the interactive setup script:
+1. Go to [render.com](https://render.com) and sign in
+2. Click **New** → **Blueprint**
+3. Connect your GitHub repository
+4. Render will detect `render.yaml` and show:
+   - `baymax-api` (Web Service)
+   - `baymax-frontend` (Static Site)
+   - `baymax-db` (PostgreSQL)
+5. Click **Apply** to deploy all services
 
-```bash
-npm run setup:tunnel
-```
+### 1.3 Configure Environment Variables
 
-This will:
-1. Authenticate with Cloudflare (opens browser)
-2. Create a named tunnel
-3. Configure DNS routing to your subdomain
-4. Generate the config files
+After deployment, update the environment variables:
 
-**Example interaction:**
-```
-Enter a name for your tunnel: baymax-api
-Enter the subdomain to use: api.lydawei.com
-```
+**Backend (baymax-api):**
+1. Go to baymax-api → Environment
+2. Set `FRONTEND_URL` to your frontend URL:
+   ```
+   https://baymax-frontend.onrender.com
+   ```
 
-### 1.4 Update CORS for Vercel
+**Frontend (baymax-frontend):**
+1. Go to baymax-frontend → Environment
+2. Set `VITE_API_URL` to your backend URL:
+   ```
+   https://baymax-api.onrender.com/api
+   ```
+3. Trigger a redeploy for the change to take effect
 
-After the setup script creates `.env`, update the `FRONTEND_URL`:
+### 1.4 Create Admin User
 
-```bash
-nano .env
-```
-
-Set it to your Vercel URL (you'll get this after deploying frontend):
-```
-FRONTEND_URL=https://your-app.vercel.app,http://localhost:5173
-```
-
-### 1.5 Start Production Server
-
-```bash
-npm run production
-```
-
-This starts both the Node.js server and the Cloudflare Tunnel.
-
-### 1.6 (Optional) Run as Systemd Service
-
-For auto-start on boot:
-
-```bash
-# Create service file for the Node.js app
-sudo nano /etc/systemd/system/baymax-backend.service
-```
-
-```ini
-[Unit]
-Description=Baymax IT Care Backend
-After=network.target
-
-[Service]
-Type=simple
-User=pi
-WorkingDirectory=/home/pi/baymax-it-care/backend
-EnvironmentFile=/home/pi/baymax-it-care/backend/.env
-ExecStart=/usr/bin/node server.js
-Restart=on-failure
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-# Install cloudflared as a service (uses config from ~/.cloudflared/)
-sudo cloudflared service install
-
-# Enable and start services
-sudo systemctl enable baymax-backend cloudflared
-sudo systemctl start baymax-backend cloudflared
-
-# Check status
-sudo systemctl status baymax-backend cloudflared
-```
-
-**Note**: Adjust `User` and `WorkingDirectory` paths to match your setup.
+1. Go to baymax-api → Shell
+2. Run the seed script:
+   ```bash
+   npm run seed:admin
+   ```
+3. Note the generated password from the output
 
 ---
 
-## Part 2: Frontend Setup (Vercel)
+## Part 2: Manual Deployment
 
-### 2.1 Install Vercel CLI (Optional)
+If you prefer to set up services manually:
 
-```bash
-npm install -g vercel
-```
+### 2.1 Create PostgreSQL Database
 
-### 2.2 Deploy to Vercel
+1. Go to Render Dashboard → **New** → **PostgreSQL**
+2. Configure:
+   - **Name**: baymax-db
+   - **Region**: Oregon (or your preference)
+   - **Plan**: Free
+3. Create and note the **Internal Database URL**
 
-**Option A: Via CLI**
-```bash
-cd frontend
-vercel
-```
+### 2.2 Create Backend Web Service
 
-Follow the prompts:
-- Link to existing project? No
-- Project name: baymax-it-care (or your preference)
-- Framework: Vite
-- Build command: npm run build
-- Output directory: dist
+1. Go to **New** → **Web Service**
+2. Connect your repository
+3. Configure:
+   - **Name**: baymax-api
+   - **Region**: Same as database
+   - **Runtime**: Node
+   - **Root Directory**: backend
+   - **Build Command**: `npm install`
+   - **Start Command**: `node server.js`
+   - **Plan**: Free
+4. Add environment variables:
+   - `NODE_ENV`: `production`
+   - `DATABASE_URL`: (paste Internal Database URL)
+   - `FRONTEND_URL`: (set after frontend deploys)
+   - `SESSION_SECRET`: (generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
+   - `TRUST_PROXY`: `true`
+5. Set **Health Check Path**: `/api/health`
 
-**Option B: Via GitHub Integration**
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Click "Import Project"
-4. Select your repository
-5. Set root directory to `frontend`
-6. Vercel auto-detects Vite settings
+### 2.3 Create Frontend Static Site
 
-### 2.3 Configure Environment Variable
-
-In the Vercel dashboard:
-1. Go to your project → Settings → Environment Variables
-2. Add:
-   - **Name**: `VITE_API_URL`
-   - **Value**: `https://api.lydawei.com/api` (your Cloudflare Tunnel URL)
-   - **Environment**: Production (and Preview if desired)
-3. Redeploy for changes to take effect
+1. Go to **New** → **Static Site**
+2. Connect your repository
+3. Configure:
+   - **Name**: baymax-frontend
+   - **Root Directory**: frontend
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+4. Add environment variable:
+   - `VITE_API_URL`: `https://baymax-api.onrender.com/api`
 
 ### 2.4 Update Backend CORS
 
-Now that you have your Vercel URL (e.g., `baymax-it-care.vercel.app`):
-
-1. SSH into your RPi5
-2. Update `backend/.env`:
-   ```
-   FRONTEND_URL=https://baymax-it-care.vercel.app,http://localhost:5173
-   ```
-3. Restart the backend:
-   ```bash
-   sudo systemctl restart baymax-backend
-   # or if running manually, Ctrl+C and npm run production
-   ```
+After frontend deploys, go back to baymax-api and set:
+- `FRONTEND_URL`: `https://baymax-frontend.onrender.com`
 
 ---
 
 ## Verification
 
 ### Test the Backend
+
 ```bash
-curl https://api.lydawei.com/api/health
+curl https://baymax-api.onrender.com/api/health
 ```
 
 Expected response:
@@ -219,61 +155,97 @@ Expected response:
 ```
 
 ### Test the Frontend
-Visit your Vercel URL and submit a rating.
+
+Visit your frontend URL and submit a rating.
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- PostgreSQL installed locally (or Docker)
+- Node.js 18+
+
+### Setup
+
+1. Create a local PostgreSQL database:
+   ```bash
+   createdb baymax
+   ```
+
+2. Copy environment file:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+
+3. Update `DATABASE_URL` in `backend/.env`:
+   ```
+   DATABASE_URL=postgresql://postgres:password@localhost:5432/baymax
+   ```
+
+4. Install dependencies and run:
+   ```bash
+   # Terminal 1: Backend
+   cd backend && npm install && npm run dev
+
+   # Terminal 2: Frontend
+   cd frontend && npm install && npm run dev
+   ```
+
+5. Create admin user:
+   ```bash
+   cd backend && npm run seed:admin
+   ```
 
 ---
 
 ## Troubleshooting
 
 ### CORS Errors
-- Check `FRONTEND_URL` in backend `.env` matches your Vercel URL exactly
+- Check `FRONTEND_URL` in backend environment matches your frontend URL exactly
 - Include the protocol (`https://`)
 - No trailing slash
 
-### Tunnel Not Connecting
-```bash
-# Check tunnel status
-cloudflared tunnel list
+### Database Connection Issues
+- Verify `DATABASE_URL` is set correctly
+- Check database is running (Render dashboard → baymax-db)
+- For local dev, ensure PostgreSQL is running
 
-# Test tunnel locally
-cloudflared tunnel --config ~/.cloudflared/config-baymax-api.yml run
-```
-
-### Database Issues
-```bash
-# Check database exists
-ls -la backend/ratings.db
-
-# Check permissions
-chmod 644 backend/ratings.db
-```
+### Cold Starts (Free Tier)
+- Free tier services spin down after 15 minutes of inactivity
+- First request may take 30+ seconds
+- Consider using a service like UptimeRobot to ping `/api/health` every 14 minutes
 
 ### Logs
-```bash
-# Backend logs (if using systemd)
-sudo journalctl -u baymax-backend -f
-
-# Cloudflared logs
-sudo journalctl -u cloudflared -f
-```
+- Go to Render Dashboard → Your Service → Logs
+- Check for startup errors or request failures
 
 ---
 
 ## Quick Reference
 
-| Component | URL | Command |
-|-----------|-----|---------|
-| Frontend (local) | http://localhost:5173 | `cd frontend && npm run dev` |
-| Backend (local) | http://localhost:3001 | `cd backend && npm run dev` |
-| Frontend (prod) | https://baymax.vercel.app | Deployed via Vercel |
-| Backend (prod) | https://api.lydawei.com | `npm run production` |
+| Component | Local URL | Production URL |
+|-----------|-----------|----------------|
+| Frontend | http://localhost:5173 | https://baymax-frontend.onrender.com |
+| Backend | http://localhost:3001 | https://baymax-api.onrender.com |
+| Health Check | http://localhost:3001/api/health | https://baymax-api.onrender.com/api/health |
+
+---
+
+## Free Tier Limitations
+
+- **Web Services**: Spin down after 15 min inactivity (cold start ~30s)
+- **PostgreSQL**: 256MB storage, 97-day retention, then deleted
+- **Build Time**: 500 minutes/month
+- **Bandwidth**: 100GB/month
 
 ---
 
 ## Security Notes
 
-- The backend uses Helmet for security headers
+- Backend uses Helmet for security headers
 - Rate limiting: 20 submissions/15min, 100 requests/15min per IP
 - CORS restricted to specified origins only
-- Cloudflare provides DDoS protection and SSL termination
-- SQLite database should be backed up regularly
+- PostgreSQL connection uses SSL in production
+- Session cookies are secure and httpOnly in production
