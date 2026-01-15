@@ -27,7 +27,6 @@ services:
   - type: web
     name: baymax-frontend
     runtime: static
-    region: oregon
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
