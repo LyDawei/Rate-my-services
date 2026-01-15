@@ -1,16 +1,33 @@
 /**
- * 🤖 Baymax IT Care - Backend Server
+ * Baymax IT Care - Backend Server
  * "Hello. I am Baymax, your personal IT healthcare companion."
  */
+
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
-const SQLiteStore = require('better-sqlite3-session-store')(session);
-const db = require('./database');
-const { db: authDb, cleanupOldLoginAttempts } = require('./auth-database');
+const pgSession = require('connect-pg-simple')(session);
+const {
+  pool,
+  initializeDatabase,
+  insertRating,
+  getRatingById,
+  getRatings,
+  getRatingsCount,
+  deleteRating,
+  getAverageStars,
+  getCategoryStats,
+  getStarDistribution,
+  getRecentRatingsCount,
+  getIssueTrackingStats,
+  testConnection,
+  closePool
+} = require('./database');
+const { initializeAuthDatabase, cleanupOldLoginAttempts } = require('./auth-database');
 const CATEGORIES = require('./categories');
 const authRoutes = require('./routes/auth');
 const { requireAuth } = require('./middleware/auth');
@@ -37,18 +54,18 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Trust proxy when behind reverse proxy (Cloudflare Tunnel, nginx, etc.)
+// Trust proxy when behind reverse proxy (Render, nginx, etc.)
 // This is required for express-rate-limit to correctly identify clients by IP
 const TRUST_PROXY = process.env.TRUST_PROXY?.toLowerCase();
 
 if (TRUST_PROXY === 'true' || TRUST_PROXY === '1') {
-  // Trust first proxy (Cloudflare Tunnel, single nginx)
+  // Trust first proxy (Render, single nginx)
   // For multiple proxies, increase TRUST_PROXY_COUNT
   const proxyCount = parseInt(process.env.TRUST_PROXY_COUNT, 10) || 1;
   app.set('trust proxy', proxyCount);
-  console.log(`🔒 Trust proxy enabled (trusting ${proxyCount} proxy/proxies)`);
+  console.log(`Trust proxy enabled (trusting ${proxyCount} proxy/proxies)`);
 } else if (process.env.NODE_ENV === 'production') {
-  console.warn('⚠️  Production mode: TRUST_PROXY not set. If behind a reverse proxy, rate limiting may not work correctly.');
+  console.warn('Production mode: TRUST_PROXY not set. If behind a reverse proxy, rate limiting may not work correctly.');
 }
 
 // Validation constants
@@ -74,7 +91,7 @@ function isOriginAllowed(origin, allowed) {
   // Exact match
   if (allowed === origin) return true;
 
-  // Wildcard subdomain match (e.g., *.vercel.app)
+  // Wildcard subdomain match (e.g., *.onrender.com)
   if (allowed.startsWith('*.')) {
     try {
       const url = new URL(origin);
@@ -84,8 +101,8 @@ function isOriginAllowed(origin, allowed) {
       if (url.protocol !== 'https:') return false;
 
       // Must match the exact domain or be a proper subdomain
-      // e.g., *.vercel.app matches app.vercel.app, my-app.vercel.app
-      // but NOT evilvercel.app or evil.com.vercel.app
+      // e.g., *.onrender.com matches app.onrender.com, my-app.onrender.com
+      // but NOT evilonrender.com or evil.com.onrender.com
       return url.hostname === wildcardDomain ||
         (url.hostname.endsWith('.' + wildcardDomain) &&
          !url.hostname.slice(0, -(wildcardDomain.length + 1)).includes('.'));
@@ -117,14 +134,12 @@ app.use(cors({
 // Parse JSON bodies
 app.use(express.json());
 
-// Session middleware
+// Session middleware with PostgreSQL store
 app.use(session({
-  store: new SQLiteStore({
-    client: authDb,
-    expired: {
-      clear: true,
-      intervalMs: 900000 // Clear expired sessions every 15 minutes
-    }
+  store: new pgSession({
+    pool: pool,
+    tableName: 'session',
+    createTableIfMissing: true
   }),
   secret: SESSION_SECRET,
   name: 'baymax.sid',
@@ -189,11 +204,11 @@ const BAYMAX_RESPONSES = {
     "Four out of five. I am glad I could help improve your technical wellbeing."
   ],
   5: [
-    "I am satisfied with my care. Ba-la-la-la-la. 👊",
+    "I am satisfied with my care. Ba-la-la-la-la.",
     "Maximum satisfaction detected! Your happiness is my primary directive.",
     "Five stars! I will add this to my database of successful patient outcomes.",
     "Excellent! I cannot deactivate until you say you are satisfied with your care. And you are!",
-    "Your satisfaction levels are optimal. Fist bump? Ba-la-la-la-la. 👊"
+    "Your satisfaction levels are optimal. Fist bump? Ba-la-la-la-la."
   ]
 };
 
@@ -225,7 +240,7 @@ app.get('/api/categories', (req, res) => {
  * POST /api/ratings
  * Submit a new care rating
  */
-app.post('/api/ratings', ratingsLimiter, (req, res) => {
+app.post('/api/ratings', ratingsLimiter, async (req, res) => {
   try {
     let { stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details } = req.body;
 
@@ -273,7 +288,7 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
       }
     }
 
-    // Normalize and validate optional boolean fields (convert to 0/1/null for SQLite)
+    // Normalize and validate optional boolean fields (convert to 0/1/null for database)
     const normalizeBoolean = (value) => {
       if (value === true || value === 'true' || value === 1) return 1;
       if (value === false || value === 'false' || value === 0) return 0;
@@ -305,22 +320,16 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
       });
     }
 
-    const stmt = db.prepare(`
-      INSERT INTO ratings (stars, category, comment, reviewer_name, resolves_issue, issue_recurrence, previous_issue_details)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
+    const newRating = await insertRating({
       stars,
       category,
-      comment || null,
-      reviewer_name || 'Anonymous Patient',
-      resolvesIssueValue,
-      issueRecurrenceValue,
-      previousIssueDetailsValue
-    );
+      comment: comment || null,
+      reviewer_name: reviewer_name || 'Anonymous Patient',
+      resolves_issue: resolvesIssueValue,
+      issue_recurrence: issueRecurrenceValue,
+      previous_issue_details: previousIssueDetailsValue
+    });
 
-    const newRating = db.prepare('SELECT * FROM ratings WHERE id = ?').get(result.lastInsertRowid);
     const categoryInfo = CATEGORIES[newRating.category] || {};
 
     res.status(201).json({
@@ -345,10 +354,10 @@ app.post('/api/ratings', ratingsLimiter, (req, res) => {
  * GET /api/health
  * Health check endpoint - also verifies database connectivity
  */
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   try {
     // Verify database is accessible
-    db.prepare('SELECT 1').get();
+    await testConnection();
 
     res.json({
       success: true,
@@ -372,20 +381,17 @@ app.get('/api/health', (req, res) => {
  * GET /api/admin/ratings
  * Retrieve all ratings (admin only)
  */
-app.get('/api/admin/ratings', requireAuth, (req, res) => {
+app.get('/api/admin/ratings', requireAuth, async (req, res) => {
   try {
     const parsedLimit = parseInt(req.query.limit, 10);
     const limit = Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 100);
     const parsedOffset = parseInt(req.query.offset, 10);
     const offset = Math.max(isNaN(parsedOffset) ? 0 : parsedOffset, 0);
 
-    const ratings = db.prepare(`
-      SELECT * FROM ratings
-      ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
-    `).all(limit, offset);
-
-    const total = db.prepare('SELECT COUNT(*) as count FROM ratings').get().count;
+    const [ratings, total] = await Promise.all([
+      getRatings(limit, offset),
+      getRatingsCount()
+    ]);
 
     // Enrich with category info
     const enrichedRatings = ratings.map(rating => {
@@ -418,7 +424,7 @@ app.get('/api/admin/ratings', requireAuth, (req, res) => {
  * DELETE /api/admin/ratings/:id
  * Delete a rating (admin only)
  */
-app.delete('/api/admin/ratings/:id', requireAuth, (req, res) => {
+app.delete('/api/admin/ratings/:id', requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id) || id <= 0) {
@@ -429,7 +435,7 @@ app.delete('/api/admin/ratings/:id', requireAuth, (req, res) => {
     }
 
     // Check if rating exists
-    const rating = db.prepare('SELECT * FROM ratings WHERE id = ?').get(id);
+    const rating = await getRatingById(id);
     if (!rating) {
       return res.status(404).json({
         success: false,
@@ -438,7 +444,7 @@ app.delete('/api/admin/ratings/:id', requireAuth, (req, res) => {
     }
 
     // Delete the rating
-    db.prepare('DELETE FROM ratings WHERE id = ?').run(id);
+    await deleteRating(id);
 
     // Audit log: Record admin deletion
     console.log(`[AUDIT] Admin "${req.session.username}" (ID: ${req.session.userId}) deleted rating ID ${id} at ${new Date().toISOString()}. Rating details: stars=${rating.stars}, category=${rating.category}, reviewer="${rating.reviewer_name}"`);
@@ -460,43 +466,23 @@ app.delete('/api/admin/ratings/:id', requireAuth, (req, res) => {
  * GET /api/admin/stats
  * Get care statistics (admin only)
  */
-app.get('/api/admin/stats', requireAuth, (req, res) => {
+app.get('/api/admin/stats', requireAuth, async (req, res) => {
   try {
-    const totalRatings = db.prepare('SELECT COUNT(*) as count FROM ratings').get().count;
-    const avgStars = db.prepare('SELECT AVG(stars) as avg FROM ratings').get().avg || 0;
-
-    // Count by category
-    const categoryStats = db.prepare(`
-      SELECT category, COUNT(*) as count, AVG(stars) as avg_stars
-      FROM ratings
-      GROUP BY category
-      ORDER BY count DESC
-    `).all();
-
-    // Star distribution
-    const starDistribution = db.prepare(`
-      SELECT stars, COUNT(*) as count
-      FROM ratings
-      GROUP BY stars
-      ORDER BY stars
-    `).all();
-
-    // Recent activity (last 7 days)
-    const recentCount = db.prepare(`
-      SELECT COUNT(*) as count FROM ratings
-      WHERE created_at >= datetime('now', '-7 days')
-    `).get().count;
-
-    // Follow-up question stats
-    const resolvedIssues = db.prepare(`
-      SELECT COUNT(*) as count FROM ratings WHERE resolves_issue = 1
-    `).get().count;
-    const unresolvedIssues = db.prepare(`
-      SELECT COUNT(*) as count FROM ratings WHERE resolves_issue = 0
-    `).get().count;
-    const recurringIssues = db.prepare(`
-      SELECT COUNT(*) as count FROM ratings WHERE issue_recurrence = 1
-    `).get().count;
+    const [
+      totalRatings,
+      avgStars,
+      categoryStats,
+      starDistribution,
+      recentCount,
+      issueTracking
+    ] = await Promise.all([
+      getRatingsCount(),
+      getAverageStars(),
+      getCategoryStats(),
+      getStarDistribution(),
+      getRecentRatingsCount(),
+      getIssueTrackingStats()
+    ]);
 
     // Enrich category stats
     const enrichedCategoryStats = categoryStats.map(stat => {
@@ -505,14 +491,14 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
         ...stat,
         category_name: categoryInfo.name || stat.category,
         category_emoji: categoryInfo.emoji || "💊",
-        avg_stars: Math.round(stat.avg_stars * 10) / 10
+        avg_stars: Math.round(parseFloat(stat.avg_stars) * 10) / 10
       };
     });
 
     // Baymax care level titles based on average rating
     let careLevel = "Healthcare Companion in Training";
-    if (avgStars >= 4.5) careLevel = "Superior Healthcare Companion 🏆";
-    else if (avgStars >= 4) careLevel = "Advanced Care Provider 🌟";
+    if (avgStars >= 4.5) careLevel = "Superior Healthcare Companion";
+    else if (avgStars >= 4) careLevel = "Advanced Care Provider";
     else if (avgStars >= 3.5) careLevel = "Certified IT Healthcare Companion";
     else if (avgStars >= 3) careLevel = "IT Care Provider";
     else if (avgStars >= 2) careLevel = "Healthcare Companion in Training";
@@ -530,11 +516,7 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
           features_built: categoryStats.find(c => c.category === 'feature_building')?.count || 0,
           bugs_fixed: categoryStats.find(c => c.category === 'bug_fixing')?.count || 0
         },
-        issue_tracking: {
-          resolved: resolvedIssues,
-          unresolved: unresolvedIssues,
-          recurring: recurringIssues
-        }
+        issue_tracking: issueTracking
       }
     });
   } catch (error) {
@@ -546,10 +528,18 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
   }
 });
 
-// Start the server
-const server = app.listen(PORT, () => {
-  console.log(`
-  🤖 ================================== 🤖
+// ============== SERVER STARTUP ==============
+
+async function startServer() {
+  try {
+    // Initialize database tables
+    await initializeDatabase();
+    await initializeAuthDatabase();
+
+    // Start the server
+    const server = app.listen(PORT, () => {
+      console.log(`
+  ==================================
 
      Baymax IT Care - Backend
      Running on port ${PORT}
@@ -560,74 +550,79 @@ const server = app.listen(PORT, () => {
 
      Admin routes: /api/admin/*
 
-  🤖 ================================== 🤖
-  `);
-});
+  ==================================
+      `);
+    });
 
-// ============== MAINTENANCE JOBS ==============
+    // ============== MAINTENANCE JOBS ==============
 
-// Cleanup old login attempts every 6 hours to prevent table bloat
-const LOGIN_ATTEMPTS_CLEANUP_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
-setInterval(() => {
-  try {
-    cleanupOldLoginAttempts();
-    console.log('[MAINTENANCE] Cleaned up old login attempt records');
-  } catch (err) {
-    console.error('[MAINTENANCE] Error cleaning login attempts:', err.message);
-  }
-}, LOGIN_ATTEMPTS_CLEANUP_INTERVAL);
+    // Cleanup old login attempts every 6 hours to prevent table bloat
+    const LOGIN_ATTEMPTS_CLEANUP_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+    const cleanupInterval = setInterval(async () => {
+      try {
+        await cleanupOldLoginAttempts();
+        console.log('[MAINTENANCE] Cleaned up old login attempt records');
+      } catch (err) {
+        console.error('[MAINTENANCE] Error cleaning login attempts:', err.message);
+      }
+    }, LOGIN_ATTEMPTS_CLEANUP_INTERVAL);
 
-// Run initial cleanup on startup
-try {
-  cleanupOldLoginAttempts();
-} catch (err) {
-  console.error('[MAINTENANCE] Initial login attempts cleanup failed:', err.message);
-}
-
-// ============== GRACEFUL SHUTDOWN ==============
-// Handle SIGTERM and SIGINT for PM2 and other process managers
-
-let isShuttingDown = false;
-
-function gracefulShutdown(signal) {
-  if (isShuttingDown) return;
-  isShuttingDown = true;
-
-  console.log(`\n🤖 Baymax received ${signal}. Initiating graceful shutdown...`);
-
-  // Stop accepting new connections
-  server.close((err) => {
-    if (err) {
-      console.error('Error closing server:', err);
-    } else {
-      console.log('✅ Server closed - no longer accepting connections');
-    }
-
-    // Close database connections
+    // Run initial cleanup on startup
     try {
-      db.close();
-      console.log('✅ Main database connection closed');
-    } catch (dbErr) {
-      console.error('Error closing main database:', dbErr);
+      await cleanupOldLoginAttempts();
+    } catch (err) {
+      console.error('[MAINTENANCE] Initial login attempts cleanup failed:', err.message);
     }
 
-    try {
-      authDb.close();
-      console.log('✅ Auth database connection closed');
-    } catch (authDbErr) {
-      console.error('Error closing auth database:', authDbErr);
+    // ============== GRACEFUL SHUTDOWN ==============
+    // Handle SIGTERM and SIGINT for process managers
+
+    let isShuttingDown = false;
+
+    async function gracefulShutdown(signal) {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
+
+      console.log(`\nBaymax received ${signal}. Initiating graceful shutdown...`);
+
+      // Clear the cleanup interval
+      clearInterval(cleanupInterval);
+
+      // Stop accepting new connections
+      server.close(async (err) => {
+        if (err) {
+          console.error('Error closing server:', err);
+        } else {
+          console.log('Server closed - no longer accepting connections');
+        }
+
+        // Close database pool
+        try {
+          await closePool();
+          console.log('Database pool closed');
+        } catch (dbErr) {
+          console.error('Error closing database pool:', dbErr);
+        }
+
+        console.log('Goodbye! Baymax is powering down. Ba-la-la-la-la.');
+        process.exit(err ? 1 : 0);
+      });
+
+      // Force close after timeout if graceful shutdown takes too long
+      setTimeout(() => {
+        console.error('Graceful shutdown timed out - forcing exit');
+        process.exit(1);
+      }, 10000);
     }
 
-    console.log('🤖 Goodbye! Baymax is powering down. Ba-la-la-la-la.');
-    process.exit(err ? 1 : 0);
-  });
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-  // Force close after timeout if graceful shutdown takes too long
-  setTimeout(() => {
-    console.error('⚠️  Graceful shutdown timed out - forcing exit');
+  } catch (error) {
+    console.error('Failed to start server:', error);
     process.exit(1);
-  }, 4000); // Slightly less than PM2's kill_timeout (5000ms)
+  }
 }
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// Start the server
+startServer();
